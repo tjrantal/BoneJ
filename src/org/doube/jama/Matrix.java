@@ -1464,10 +1464,6 @@ public class Matrix implements Cloneable, java.io.Serializable {
 			return false;
 	}
 
-	/*
-	 * ------------------------ Private Methods ------------------------
-	 */
-
 	/** Check if size(A) == size(B) **/
 
 	private void checkMatrixDimensions(Matrix B) {
