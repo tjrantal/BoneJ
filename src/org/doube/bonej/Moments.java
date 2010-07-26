@@ -64,7 +64,7 @@ public class Moments implements PlugIn, DialogListener {
 	private Calibration cal;
 
 	public void run(String arg) {
-		if (!ImageCheck.checkIJVersion())
+		if (!ImageCheck.checkEnvironment())
 			return;
 		final ImagePlus imp = IJ.getImage();
 		if (null == imp) {
@@ -500,7 +500,6 @@ public class Moments implements PlugIn, DialogListener {
 		final int wT = sides[0];
 		final int hT = sides[1];
 		final int dT = sides[2];
-		ImageStack targetStack = new ImageStack(wT, hT, dT);
 		final double xTc = wT * vS / 2;
 		final double yTc = hT * vS / 2;
 		final double zTc = dT * vS / 2;
@@ -513,12 +512,20 @@ public class Moments implements PlugIn, DialogListener {
 		for (int z = 1; z <= d; z++) {
 			sliceProcessors[z] = sourceStack.getProcessor(z);
 		}
+		// Initialise an empty stack and tartgetStack's processor array
+		ImageStack targetStack = new ImageStack(wT, hT, dT);
+		ImageProcessor[] targetProcessors = new ImageProcessor[dT + 1];
+		for (int z = 1; z <= dT; z++) {
+			targetStack.setPixels(getEmptyPixels(wT, hT, imp.getBitDepth()), z);
+			targetProcessors[z] = targetStack.getProcessor(z);
+		}
+
 		// Multithread start
 		int nThreads = Runtime.getRuntime().availableProcessors();
 		AlignThread[] alignThread = new AlignThread[nThreads];
 		for (int thread = 0; thread < nThreads; thread++) {
 			alignThread[thread] = new AlignThread(thread, nThreads, imp,
-					sliceProcessors, targetStack, eigenVecInv, centroid, wT,
+					sliceProcessors, targetProcessors, eigenVecInv, centroid, wT,
 					hT, dT, startSlice, endSlice);
 			alignThread[thread].start();
 		}
@@ -537,9 +544,14 @@ public class Moments implements PlugIn, DialogListener {
 			final int zCent = (int) Math.floor(zTc / vS);
 			final int axisColour = Integer.MAX_VALUE;
 			for (int z = 1; z <= dT; z++) {
-				ImageProcessor axisIP = targetStack.getProcessor(z);
 				// z axis
-				axisIP.set(xCent, yCent, axisColour);
+				try {
+					ImageProcessor axisIP = targetStack.getProcessor(z);
+					axisIP.set(xCent, yCent, axisColour);
+				} catch (NullPointerException npe) {
+					IJ.handleException(npe);
+					break;
+				}
 			}
 			ImageProcessor axisIP = targetStack.getProcessor(zCent);
 			axisIP.setColor(Integer.MAX_VALUE);
@@ -572,13 +584,13 @@ public class Moments implements PlugIn, DialogListener {
 		final int thread, nThreads, wT, hT, dT, startSlice, endSlice;
 		final ImagePlus impT;
 		final ImageStack stackT;
-		final ImageProcessor[] sliceProcessors;
-		final ImageStack targetStack;
+		final ImageProcessor[] sliceProcessors, targetProcessors;
 		final double[][] eigenVecInv;
 		final double[] centroid;
 
 		public AlignThread(int thread, int nThreads, ImagePlus imp,
-				ImageProcessor[] sliceProcessors, ImageStack targetStack,
+				ImageProcessor[] sliceProcessors,
+				ImageProcessor[] targetProcessors,
 				double[][] eigenVecInv, double[] centroid, int wT, int hT,
 				int dT, int startSlice, int endSlice) {
 			this.impT = imp;
@@ -586,7 +598,7 @@ public class Moments implements PlugIn, DialogListener {
 			this.thread = thread;
 			this.nThreads = nThreads;
 			this.sliceProcessors = sliceProcessors;
-			this.targetStack = targetStack;
+			this.targetProcessors = targetProcessors;
 			this.eigenVecInv = eigenVecInv;
 			this.centroid = centroid;
 			this.wT = wT;
@@ -625,12 +637,12 @@ public class Moments implements PlugIn, DialogListener {
 			final double eVI02 = eigenVecInv[0][2];
 			final double eVI12 = eigenVecInv[1][2];
 			final double eVI22 = eigenVecInv[2][2];
-			for (int z = this.thread; z <= this.dT; z += this.nThreads) {
+			for (int z = this.thread + 1; z <= this.dT; z += this.nThreads) {
 				IJ.showStatus("Aligning image stack...");
 				IJ.showProgress(z, this.dT);
-				this.targetStack.setPixels(getEmptyPixels(this.wT, this.hT, this.impT
-						.getBitDepth()), z);
-				ImageProcessor targetIP = this.targetStack.getProcessor(z);
+				// this.targetStack.setPixels(getEmptyPixels(this.wT, this.hT,
+				// this.impT.getBitDepth()), z);
+				ImageProcessor targetIP = targetProcessors[z];
 				final double zD = z * vS - zTc;
 				final double zDeVI00 = zD * eVI20;
 				final double zDeVI01 = zD * eVI21;
@@ -658,7 +670,8 @@ public class Moments implements PlugIn, DialogListener {
 								|| zA < this.startSlice || zA > this.endSlice) {
 							continue;
 						} else {
-							targetIP.set(x, y, this.sliceProcessors[zA].get(xA, yA));
+							targetIP.set(x, y, this.sliceProcessors[zA].get(xA,
+									yA));
 						}
 					}
 				}

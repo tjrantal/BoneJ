@@ -24,6 +24,7 @@ import java.awt.Rectangle;
 import java.awt.TextField;
 import java.util.List;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.vecmath.Color3f;
 import javax.vecmath.Point3f;
@@ -32,6 +33,7 @@ import marchingcubes.MCTriangulator;
 
 import org.doube.util.DialogModifier;
 import org.doube.util.ImageCheck;
+import org.doube.util.Multithreader;
 import org.doube.util.ResultInserter;
 
 import customnode.CustomTriangleMesh;
@@ -43,12 +45,15 @@ import ij.measure.Calibration;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 import ij.plugin.PlugIn;
-import ij.gui.*;
+
+import ij.gui.DialogListener;
+import ij.gui.GenericDialog;
+import ij.gui.WaitForUserDialog;
 
 public class VolumeFraction implements PlugIn, DialogListener {
 
 	public void run(String arg) {
-		if (!ImageCheck.checkIJVersion())
+		if (!ImageCheck.checkEnvironment())
 			return;
 		final ImagePlus imp = IJ.getImage();
 		if (null == imp) {
@@ -82,7 +87,11 @@ public class VolumeFraction implements PlugIn, DialogListener {
 		if (type.equals(types[0])) {
 			volumes = getVolumes(imp, minT, maxT);
 		} else if (type.equals(types[1])) {
-			volumes = getSurfaceVolume(imp, minT, maxT, resampling);
+			try {
+				volumes = getSurfaceVolume(imp, minT, maxT, resampling);
+			} catch (Exception e) {
+				IJ.log(e.getMessage());
+			}
 		}
 		double volBone = volumes[0];
 		double volTotal = volumes[1];
@@ -109,34 +118,50 @@ public class VolumeFraction implements PlugIn, DialogListener {
 	 * @return double[2] containing the foreground and total volumes
 	 * 
 	 */
-	public double[] getVolumes(ImagePlus imp, double minT, double maxT) {
-		ImageProcessor ip = imp.getProcessor();
+	public double[] getVolumes(ImagePlus imp, final double minT,
+			final double maxT) {
 		final ImageStack stack = imp.getImageStack();
-		final ImageProcessor mask = ip.getMask();
-		final boolean hasMask = (mask != null);
-		Rectangle r = ip.getRoi();
-		final int rLeft = r.x;
-		final int rTop = r.y;
-		final int rRight = rLeft + r.width;
-		final int rBottom = rTop + r.height;
-		final int nSlices = imp.getStackSize();
-
-		long volTotal = 0;
-		long volBone = 0;
-		for (int s = 1; s <= nSlices; s++) {
-			ImageProcessor ipSlice = stack.getProcessor(s);
-			for (int v = rTop; v < rBottom; v++) {
-				final int vrTop = v - rTop;
-				for (int u = rLeft; u < rRight; u++) {
-					if (!hasMask || mask.get(u - rLeft, vrTop) > 0) {
-						volTotal++;
-						final double pixel = ipSlice.get(u, v);
-						if (pixel >= minT && pixel <= maxT) {
-							volBone++;
+		final int nSlices = stack.getSize();
+		final ImageProcessor mask = imp.getProcessor().getMask();
+		final Rectangle r = imp.getProcessor().getRoi();
+		final AtomicInteger ai = new AtomicInteger(1);
+		Thread[] threads = Multithreader.newThreads();
+		final long[] volTotalT = new long[nSlices];
+		final long[] volBoneT = new long[nSlices];
+		for (int thread = 0; thread < threads.length; thread++) {
+			threads[thread] = new Thread(new Runnable() {
+				public void run() {
+					final int rLeft = r.x;
+					final int rTop = r.y;
+					final int rRight = rLeft + r.width;
+					final int rBottom = rTop + r.height;
+					final boolean hasMask = (mask != null);
+					for (int s = ai.getAndIncrement(); s <= nSlices; s = ai
+							.getAndIncrement()) {
+						ImageProcessor ipSlice = stack.getProcessor(s);
+						for (int v = rTop; v < rBottom; v++) {
+							final int vrTop = v - rTop;
+							for (int u = rLeft; u < rRight; u++) {
+								if (!hasMask || mask.get(u - rLeft, vrTop) > 0) {
+									volTotalT[s]++;
+									final double pixel = ipSlice.get(u, v);
+									if (pixel >= minT && pixel <= maxT) {
+										volBoneT[s]++;
+									}
+								}
+							}
 						}
 					}
 				}
-			}
+			});
+		}
+		Multithreader.startAndJoin(threads);
+
+		long volTotal = 0;
+		long volBone = 0;
+		for (int i = 0; i < nSlices; i++) {
+			volTotal += volTotalT[i];
+			volBone += volBoneT[i];
 		}
 		Calibration cal = imp.getCalibration();
 		double voxelVol = cal.pixelWidth * cal.pixelHeight * cal.pixelDepth;
@@ -159,44 +184,60 @@ public class VolumeFraction implements PlugIn, DialogListener {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public double[] getSurfaceVolume(ImagePlus imp, double minT, double maxT,
-			int resampling) {
+	public double[] getSurfaceVolume(ImagePlus imp, final double minT,
+			final double maxT, int resampling) {
 		ImageProcessor ip = imp.getProcessor();
 		final ImageStack stack = imp.getImageStack();
 		final ImageProcessor mask = ip.getMask();
 		final boolean hasMask = (mask != null);
-		Rectangle r = ip.getRoi();
+		final Rectangle r = ip.getRoi();
 		final int rLeft = r.x;
 		final int rTop = r.y;
 		final int rRight = rLeft + r.width;
 		final int rBottom = rTop + r.height;
 		final int nSlices = imp.getStackSize();
-		ImageStack outStack = new ImageStack(r.width, r.height);
-		ImageStack maskStack = new ImageStack(r.width, r.height);
-		for (int s = 1; s <= nSlices; s++) {
-			ImageProcessor ipSlice = stack.getProcessor(s);
-			ByteProcessor ipOut = new ByteProcessor(r.width, r.height);
-			ByteProcessor ipMask = new ByteProcessor(r.width, r.height);
-			for (int v = rTop; v < rBottom; v++) {
-				final int vrTop = v - rTop;
-				for (int u = rLeft; u < rRight; u++) {
-					if (!hasMask || mask.get(u - rLeft, vrTop) > 0) {
-						ipMask.set(u - rLeft, v - rTop, (byte) 255);
-						final double pixel = ipSlice.get(u, v);
-						if (pixel >= minT && pixel <= maxT) {
-							ipOut.set(u - rLeft, v - rTop, (byte) 255);
-						} else {
-							ipOut.set(u - rLeft, v - rTop, (byte) 0);
+		final ImageStack outStack = new ImageStack(r.width, r.height, nSlices);
+		final ImageStack maskStack = new ImageStack(r.width, r.height, nSlices);
+		final ByteProcessor[] outIps = new ByteProcessor[nSlices + 1];
+		final ByteProcessor[] maskIps = new ByteProcessor[nSlices + 1];
+		final AtomicInteger ai = new AtomicInteger(1);
+		Thread[] threads = Multithreader.newThreads();
+		for (int thread = 0; thread < threads.length; thread++) {
+			threads[thread] = new Thread(new Runnable() {
+				public void run() {
+					for (int s = ai.getAndIncrement(); s <= nSlices; s = ai
+							.getAndIncrement()) {
+						IJ.showStatus("Creating binary templates...");
+						IJ.showProgress(s, nSlices);
+						ImageProcessor ipSlice = stack.getProcessor(s);
+						outStack.setPixels(Moments.getEmptyPixels(r.width, r.height, 8), s);
+						maskStack
+								.setPixels(Moments.getEmptyPixels(r.width, r.height, 8), s);
+						outIps[s] = (ByteProcessor) outStack.getProcessor(s);
+						maskIps[s] = (ByteProcessor) maskStack.getProcessor(s);
+						for (int v = rTop; v < rBottom; v++) {
+							final int vrTop = v - rTop;
+							for (int u = rLeft; u < rRight; u++) {
+								if (!hasMask || mask.get(u - rLeft, vrTop) > 0) {
+									maskIps[s].set(u - rLeft, v - rTop,
+											(byte) 255);
+									final double pixel = ipSlice.get(u, v);
+									if (pixel >= minT && pixel <= maxT) {
+										outIps[s].set(u - rLeft, v - rTop,
+												(byte) 255);
+									}
+								}
+							}
 						}
 					}
 				}
-			}
-			outStack.addSlice(stack.getSliceLabel(s), ipOut);
-			maskStack.addSlice(stack.getSliceLabel(s), ipMask);
+			});
 		}
+		Multithreader.startAndJoin(threads);
 		ImagePlus impOut = new ImagePlus();
 		impOut.setStack("Out", outStack);
 		impOut.setCalibration(imp.getCalibration());
+		IJ.showStatus("Creating surface mesh...");
 		final Color3f colour = new Color3f(0.0f, 0.0f, 0.0f);
 		boolean[] channels = { true, false, false };
 		MCTriangulator mct = new MCTriangulator();
@@ -204,13 +245,17 @@ public class VolumeFraction implements PlugIn, DialogListener {
 				resampling);
 		CustomTriangleMesh surface = new CustomTriangleMesh(points, colour,
 				0.0f);
+		IJ.showStatus("Calculating BV...");
 		double boneVolume = surface.getVolume();
 		ImagePlus maskImp = new ImagePlus("Mask", maskStack);
 		maskImp.setCalibration(imp.getCalibration());
+		IJ.showStatus("Creating surface mesh...");
 		points = mct.getTriangles(maskImp, 128, channels, resampling);
 		surface = new CustomTriangleMesh(points, colour, 0.0f);
+		IJ.showStatus("Calculating TV...");
 		double totalVolume = surface.getVolume();
 		double[] volumes = { boneVolume, totalVolume };
+		IJ.showStatus("");
 		return volumes;
 	}
 

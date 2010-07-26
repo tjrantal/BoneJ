@@ -136,11 +136,12 @@ public class ImageCheck {
 
 		if (vD != sliceSpacing) {
 			IJ
-					.log(imp.getTitle()+":\n"+
-							"Current voxel depth does not agree with DICOM header slice spacing.\n"
-							+ "Current voxel depth: " + IJ.d2s(vD, 4) + " " + units
-							+ "\n" + "DICOM slice spacing: "
-							+ IJ.d2s(sliceSpacing, 4) + " " + units+"\n");
+					.log(imp.getTitle()
+							+ ":\n"
+							+ "Current voxel depth does not agree with DICOM header slice spacing.\n"
+							+ "Current voxel depth: " + IJ.d2s(vD, 4) + " "
+							+ units + "\n" + "DICOM slice spacing: "
+							+ IJ.d2s(sliceSpacing, 4) + " " + units + "\n");
 		}
 		return sliceSpacing;
 	}
@@ -189,7 +190,7 @@ public class ImageCheck {
 	 * 
 	 * @return false if the IJ version is too old
 	 */
-	public static boolean checkIJVersion() {
+	private static boolean checkIJVersion() {
 		if (requiredIJVersion.compareTo(IJ.getVersion()) > 0) {
 			IJ.error("Update ImageJ",
 					"You are using an old version of ImageJ, v"
@@ -199,6 +200,33 @@ public class ImageCheck {
 			return false;
 		} else
 			return true;
+	}
+
+	/**
+	 * Show a message a return false if any requirement of the environment is
+	 * missing
+	 * 
+	 * @return
+	 */
+	public static boolean checkEnvironment() {
+		try {
+			Class.forName("javax.media.j3d.VirtualUniverse");
+		} catch (ClassNotFoundException e) {
+			IJ.showMessage("Java 3D libraries are not installed.\n" +
+					"Please install and run the ImageJ 3D Viewer,\n" +
+					"which will automatically install Java's 3D libraries.");
+			return false;
+		}
+		try {
+			Class.forName("ij3d.ImageJ3DViewer");
+		} catch (ClassNotFoundException e){
+			IJ.showMessage("ImageJ 3D Viewer is not installed.\n" +
+					"Please install and run the ImageJ 3D Viewer.");
+			return false;
+		}
+		if (!checkIJVersion())
+			return false;
+		return true;
 	}
 
 	/**

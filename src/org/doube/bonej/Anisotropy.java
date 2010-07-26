@@ -41,6 +41,7 @@ import java.util.Vector;
 import ij3d.Image3DUniverse;
 import ij3d.Content;
 
+import org.doube.geometry.FitEllipsoid;
 import org.doube.jama.Matrix;
 import org.doube.jama.EigenvalueDecomposition;
 import org.doube.util.ImageCheck;
@@ -56,22 +57,18 @@ import org.doube.util.ResultInserter;
  * </p>
  * 
  * @see <p>
- *      Odgaard A (1997) Three-dimensional methods for quantification of
- *      cancellous bone architecture. Bone 20: 315-28. <a
- *      href="http://dx.doi.org/10.1016/S8756-3282(97)00007-0"
- *      >doi:10.1016/S8756-3282(97)00007-0</a>
+ *      Harrigan TP, Mann RW (1984) Characterization of microstructural
+ *      anisotropy in orthotropic materials using a second rank tensor. J Mater
+ *      Sci 19: 761-767. <a
+ *      href="http://dx.doi.org/10.1007/BF00540446">doi:10.1007/BF00540446</a>.
  *      </p>
  * @author Michael Doube
  * 
  */
-// TODO implement the autocorrelation function (ACF) method
-// TODO multithread
-// TODO split off anisotropy algorithms into classes in org.doube.bonej
-// and call them from the main Anisotropy_ class
 public class Anisotropy implements PlugIn {
 
 	public void run(String arg) {
-		if (!ImageCheck.checkIJVersion()) {
+		if (!ImageCheck.checkEnvironment()) {
 			return;
 		}
 		final ImagePlus imp = IJ.getImage();
@@ -146,8 +143,8 @@ public class Anisotropy implements PlugIn {
 		if (doAlign) {
 			EigenvalueDecomposition E = (EigenvalueDecomposition) result[2];
 			Moments m = new Moments();
-			ImagePlus alignedImp = m.alignImage(imp, E.getV(), false, 1, d, 128, 255,
-					0, 1);
+			ImagePlus alignedImp = m.alignImage(imp, E.getV(), false, 1, d,
+					128, 255, 0, 1);
 			alignedImp.show();
 		}
 
@@ -247,12 +244,10 @@ public class Anisotropy implements PlugIn {
 				coOrdinates[v][1] = milV * vectorList[v][1];
 				coOrdinates[v][2] = milV * vectorList[v][2];
 			}
-			// calculate principal components
-			E = principalComponents(coOrdinates);
-			Matrix eigenValues = E.getD();
-			double[][] eVal = eigenValues.getArrayCopy();
-			anisotropy = 1 - eVal[0][0] / eVal[2][2];
+			Object[] result = harriganMann(coOrdinates);
+			anisotropy = ((double[]) result[0])[0];
 			anisotropyHistory.add(anisotropy);
+			E = (EigenvalueDecomposition) result[1];
 
 			variance = getVariance(anisotropyHistory, minIterations);
 
@@ -434,8 +429,6 @@ public class Anisotropy implements PlugIn {
 
 		final int width = imp.getWidth();
 
-		boolean lastPos, thisPos;
-
 		// create a work array containing pixels +- 1 radius from centroid
 		final int w = (int) Math.round(radius / vW);
 		final int h = (int) Math.round(radius / vH);
@@ -476,119 +469,109 @@ public class Anisotropy implements PlugIn {
 		// store an intercept count for each vector
 		double[] interceptCounts = new double[nVectors];
 
-		final double radVw = -radius / vW;
-		final double radVh = -radius / vH;
-		final double radVd = -radius / vD;
-
 		// loop through all vectors
-		for (int v = 0; v < nVectors; v++) {
-			double nIntercepts = 0;
-			final double vX = vectorList[v][0];
-			final double vY = vectorList[v][1];
-			final double vZ = vectorList[v][2];
-
-			// start at negative end of vector
-			final int xS = (int) Math.round(radVw * vX);
-			final int yS = (int) Math.round(radVh * vY);
-			final int zS = (int) Math.round(radVd * vZ);
-
-			final int startIndex = centroidIndex + b * zS + a * yS + xS;
-
-			if (workArray[startIndex] == 0) {
-				lastPos = true;
-			} else {
-				lastPos = false;
-			}
-
-			final double vXvW = vX / vW;
-			final double vYvH = vY / vH;
-			final double vZvD = vZ / vD;
-
-			for (double pos = -radius; pos <= radius; pos += vectorSampling) {
-				// find the index of the voxel that the sample falls within
-				// offset from centroid
-				final int x = (int) Math.round(pos * vXvW);
-				final int y = (int) Math.round(pos * vYvH);
-				final int z = (int) Math.round(pos * vZvD);
-				final int testIndex = centroidIndex + b * z + a * y + x;
-				// determine if the voxel is thresholded or not
-				if (workArray[testIndex] == 0) {
-					thisPos = true;
-				} else {
-					thisPos = false;
-				}
-				// if this pos is not equal to last pos then an interface is
-				// counted
-				if (thisPos != lastPos) {
-					nIntercepts++;
-				}
-				// then before incrementing the for loop, set lastPos to thisPos
-				lastPos = thisPos;
-			}
-			interceptCounts[v] = nIntercepts;
+		// start multithreading here - each thread samples a set of vectors
+		int nThreads = Runtime.getRuntime().availableProcessors();
+		InterceptThread[] it = new InterceptThread[nThreads];
+		for (int thread = 0; thread < nThreads; thread++) {
+			it[thread] = new InterceptThread(thread, nThreads, nVectors,
+					centroidIndex, a, b, radius, vW, vH, vD, vectorSampling,
+					interceptCounts, vectorList, workArray);
+			it[thread].start();
 		}
-
+		try {
+			for (int thread = 0; thread < nThreads; thread++) {
+				it[thread].join();
+			}
+		} catch (InterruptedException ie) {
+			IJ.error("A thread was interrupted.");
+		}
 		return interceptCounts;
 	}/* end meanInterceptLengths */
 
-	/*--------------------------------------------------------------------------*/
-	/**
-	 * Calculate the eigenvectors and eigenvalues of a set of points by the
-	 * covariance method and eigendecomposition.
-	 * 
-	 * @param coOrdinates
-	 *            n x 3 array centred on (0,0,0)
-	 * @return EigenvalueDecomposition containing eigenvectors and eigenvalues
-	 * 
-	 */
-	private EigenvalueDecomposition principalComponents(double[][] coOrdinates) {
-		double sumX = 0, sumY = 0, sumZ = 0;
-		final int nCo = coOrdinates.length;
-		for (int n = 0; n < nCo; n++) {
-			sumX += coOrdinates[n][0];
-			sumY += coOrdinates[n][1];
-			sumZ += coOrdinates[n][2];
-		}
-		final double cX = sumX / nCo;
-		final double cY = sumY / nCo;
-		final double cZ = sumZ / nCo;
+	class InterceptThread extends Thread {
+		int thread, nThreads, nVectors, centroidIndex, a, b;
+		double radius, vW, vH, vD, vectorSampling;
+		double[] interceptCounts;
+		double[][] vectorList;
+		byte[] workArray;
 
-		double sXx = 0;
-		double sYy = 0;
-		double sZz = 0;
-		double sXy = 0;
-		double sXz = 0;
-		double sYz = 0;
-		double count = 0;
-		for (int n = 0; n < nCo; n++) {
-			final double x = coOrdinates[n][0] - cX;
-			final double y = coOrdinates[n][1] - cY;
-			final double z = coOrdinates[n][2] - cZ;
-			sXx += x * x;
-			sYy += y * y;
-			sZz += z * z;
-			sXy += x * y;
-			sXz += x * z;
-			sYz += y * z;
-			count++;
+		public InterceptThread(int thread, int nThreads, int nVectors,
+				int centroidIndex, int a, int b, double radius, double vW,
+				double vH, double vD, double vectorSampling,
+				double[] interceptCounts, double[][] vectorList,
+				byte[] workArray) {
+			this.thread = thread;
+			this.nThreads = nThreads;
+			this.nVectors = nVectors;
+			this.centroidIndex = centroidIndex;
+			this.a = a;
+			this.b = b;
+			this.radius = radius;
+			this.vW = vW;
+			this.vH = vH;
+			this.vD = vD;
+			this.vectorSampling = vectorSampling;
+			this.interceptCounts = interceptCounts;
+			this.vectorList = vectorList;
+			this.workArray = workArray;
 		}
-		double[][] C = new double[3][3];
-		C[0][0] = sXx;
-		C[1][1] = sYy;
-		C[2][2] = sZz;
-		C[0][1] = sXy;
-		C[0][2] = sXz;
-		C[1][0] = sXy;
-		C[1][2] = sYz;
-		C[2][0] = sXz;
-		C[2][1] = sYz;
-		double invCount = 1 / count;
-		Matrix covarianceMatrix = new Matrix(C).times(invCount);
-		EigenvalueDecomposition E = new EigenvalueDecomposition(
-				covarianceMatrix);
-		return E;
+
+		public void run() {
+			final double radVw = -radius * vW;
+			final double radVh = -radius * vH;
+			final double radVd = -radius * vD;
+			for (int v = this.thread; v < this.nVectors; v += this.nThreads) {
+				double nIntercepts = 0;
+				final double vX = vectorList[v][0];
+				final double vY = vectorList[v][1];
+				final double vZ = vectorList[v][2];
+
+				// start at negative end of vector
+				final int xS = (int) Math.round(radVw * vX);
+				final int yS = (int) Math.round(radVh * vY);
+				final int zS = (int) Math.round(radVd * vZ);
+
+				final int startIndex = centroidIndex + b * zS + a * yS + xS;
+				boolean lastPos, thisPos;
+				if (workArray[startIndex] == 0) {
+					lastPos = true;
+				} else {
+					lastPos = false;
+				}
+
+				final double vXvW = vX / vW;
+				final double vYvH = vY / vH;
+				final double vZvD = vZ / vD;
+
+				for (double pos = -radius; pos <= radius; pos += vectorSampling) {
+					// find the index of the voxel that the sample falls within
+					// offset from centroid
+					final int x = (int) Math.round(pos * vXvW);
+					final int y = (int) Math.round(pos * vYvH);
+					final int z = (int) Math.round(pos * vZvD);
+					final int testIndex = centroidIndex + b * z + a * y + x;
+					// determine if the voxel is thresholded or not
+					if (workArray[testIndex] == 0) {
+						thisPos = true;
+					} else {
+						thisPos = false;
+					}
+					// if this pos is not equal to last pos then an interface is
+					// counted
+					if (thisPos != lastPos) {
+						nIntercepts++;
+					}
+					// then before incrementing the for loop, set lastPos to
+					// thisPos
+					lastPos = thisPos;
+				}
+				interceptCounts[v] = nIntercepts;
+			}
+		}
 	}
 
+	/*--------------------------------------------------------------------------*/
 	/**
 	 * Draw on plotImage the data in anisotropyHistory with error bars from
 	 * errorHistory
@@ -639,15 +622,16 @@ public class Anisotropy implements PlugIn {
 	 * 
 	 */
 	private void plotPoints3D(double[][] coOrdinates, String name) {
+		final int nPoints = coOrdinates.length;
 		// Create a CustomMesh from the coordinates
 		List<Point3f> mesh = new ArrayList<Point3f>();
-		for (int i = 0; i < coOrdinates.length; i++) {
+		for (int i = 0; i < nPoints; i++) {
 			mesh.add(new Point3f((float) coOrdinates[i][0],
 					(float) coOrdinates[i][1], (float) coOrdinates[i][2]));
 		}
 		// add the other ends of the vectors
 		List<Point3f> mesh2 = new ArrayList<Point3f>();
-		for (int i = 0; i < coOrdinates.length; i++) {
+		for (int i = 0; i < nPoints; i++) {
 			mesh2.add(new Point3f(-(float) coOrdinates[i][0],
 					-(float) coOrdinates[i][1], -(float) coOrdinates[i][2]));
 		}
@@ -673,4 +657,38 @@ public class Anisotropy implements PlugIn {
 		// Have a look at the source code of CustomPointMesh
 		// for changing point size and anti-aliasing
 	}/* end plotPoints3D */
+
+	/**
+	 * Calculate degree of anisotropy according to Harrigan and Mann's
+	 * ellipsoidal tensor method
+	 * 
+	 * @param coOrdinates
+	 * @return Object[] containing degree of anisotropy and the
+	 *         eigendecomposition
+	 */
+	private Object[] harriganMann(double[][] coOrdinates) {
+		Object[] ellipsoid = new Object[6];
+		double da = 0;
+		try {
+			ellipsoid = FitEllipsoid.yuryPetrov(coOrdinates);
+		} catch (RuntimeException re) {
+			da = Math.random();
+		}
+		double[] coEf = (double[]) ellipsoid[3];
+		double[][] tensor = { { coEf[0], coEf[3], coEf[4] },
+				{ coEf[3], coEf[1], coEf[5] }, { coEf[4], coEf[5], coEf[2] } };
+		Matrix M = new Matrix(tensor);
+		EigenvalueDecomposition E = M.eig();
+		Matrix EigenVal = E.getD();
+		double[] diag = EigenVal.diag().getColumnPackedCopy();
+		da = 1 - diag[0] / diag[2];
+		if (da > 1)
+			da = 1;
+		else if (da < 0)
+			da = 0;
+		double[] anisotropy = { da };
+		Object[] result = { anisotropy, E };
+		return result;
+	}
+
 }
