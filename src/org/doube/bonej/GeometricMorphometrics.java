@@ -4,10 +4,14 @@ import javax.vecmath.Color3f;
 
 import org.doube.util.ImageCheck;
 
+import orthoslice.OrthoGroup;
+
 import ij.IJ;
 import ij.ImagePlus;
 import ij.plugin.Orthogonal_Views;
 import ij.plugin.PlugIn;
+import ij3d.AxisConstants;
+import ij3d.Content;
 import ij3d.Image3DUniverse;
 
 /**
@@ -28,6 +32,7 @@ public class GeometricMorphometrics implements PlugIn {
 	private Image3DUniverse univ;
 	private Orthogonal_Views orthoViewer;
 	private ImagePlus imp;
+	private OrthoGroup ortho3D;
 
 	public void run(String arg) {
 		if (!ImageCheck.checkEnvironment())
@@ -44,25 +49,64 @@ public class GeometricMorphometrics implements PlugIn {
 		orthoViewer.run("");
 		univ = new Image3DUniverse();
 		show3DVolume();
+		show3DOrtho();
 		univ.show();
+		orthoListener();
 	}
 
 	private void show3DOrtho() {
-		try {
-			univ.addOrthoslice(imp, (new Color3f(1.0f, 1.0f, 1.0f)),
-					"Ortho " + imp.getTitle(), 0,
-					(new boolean[] { true, true, true }), 2).setLocked(true);
-		} catch (NullPointerException npe) {
-			IJ.log("3D Viewer was closed before rendering completed.");
+		String orthoTitle = "Ortho " + imp.getTitle();
+		Content c = univ.getContent(orthoTitle);
+		if (c == null) {
+			try {
+				univ.addOrthoslice(imp, (new Color3f(1.0f, 1.0f, 1.0f)),
+						orthoTitle, 0,
+						(new boolean[] { true, true, true }), 2)
+						.setLocked(true);
+				c = univ.getContent(orthoTitle);
+				ortho3D = (OrthoGroup)c.getContent();
+			} catch (NullPointerException npe) {
+				IJ.log("3D Viewer was closed before rendering completed.");
+			}
+		} else
+			c.setVisible(true);
+	}
+
+	private void hide3DOrtho() {
+		Content c = univ.getContent("Ortho " + imp.getTitle());
+		if (c != null && c.isVisible()) {
+			c.setVisible(false);
 		}
 	}
 
 	private void show3DVolume() {
-		try {
-			univ.addVoltex(imp, new Color3f(1.0f, 1.0f, 1.0f), imp.getTitle(),
-					0, new boolean[] { true, true, true }, 2).setLocked(true);
-		} catch (NullPointerException npe) {
-			IJ.log("3D Viewer was closed before rendering completed.");
+		Content c = univ.getContent("Ortho " + imp.getTitle());
+		if (c == null) {
+			try {
+				univ.addVoltex(imp, new Color3f(1.0f, 1.0f, 1.0f),
+						imp.getTitle(), 0, new boolean[] { true, true, true },
+						2).setLocked(true);
+			} catch (NullPointerException npe) {
+				IJ.log("3D Viewer was closed before rendering completed.");
+			}
+		} else
+			c.setVisible(true);
+	}
+
+	private void hide3DVolume() {
+		Content c = univ.getContent(imp.getTitle());
+		if (c != null && c.isVisible()) {
+			c.setVisible(false);
 		}
+	}
+	
+	private void orthoListener(){
+		//listen for changes to the orthoviewer's state and update the 
+		//3D orthoviewer position accordingly
+		int x = 5, y = 10, z = 15;//test values
+		ortho3D.setSlice(AxisConstants.X_AXIS, x);
+		ortho3D.setSlice(AxisConstants.Y_AXIS, y);
+		ortho3D.setSlice(AxisConstants.Z_AXIS, z);
+		
 	}
 }
