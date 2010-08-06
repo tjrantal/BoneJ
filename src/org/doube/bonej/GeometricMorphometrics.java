@@ -1,5 +1,7 @@
 package org.doube.bonej;
 
+import java.awt.event.MouseEvent;
+
 import javax.vecmath.Color3f;
 
 import org.doube.util.ImageCheck;
@@ -60,11 +62,10 @@ public class GeometricMorphometrics implements PlugIn {
 		if (c == null) {
 			try {
 				univ.addOrthoslice(imp, (new Color3f(1.0f, 1.0f, 1.0f)),
-						orthoTitle, 0,
-						(new boolean[] { true, true, true }), 2)
+						orthoTitle, 0, (new boolean[] { true, true, true }), 2)
 						.setLocked(true);
 				c = univ.getContent(orthoTitle);
-				ortho3D = (OrthoGroup)c.getContent();
+				ortho3D = (OrthoGroup) c.getContent();
 			} catch (NullPointerException npe) {
 				IJ.log("3D Viewer was closed before rendering completed.");
 			}
@@ -99,14 +100,25 @@ public class GeometricMorphometrics implements PlugIn {
 			c.setVisible(false);
 		}
 	}
-	
-	private void orthoListener(){
-		//listen for changes to the orthoviewer's state and update the 
-		//3D orthoviewer position accordingly
-		int x = 5, y = 10, z = 15;//test values
-		ortho3D.setSlice(AxisConstants.X_AXIS, x);
-		ortho3D.setSlice(AxisConstants.Y_AXIS, y);
-		ortho3D.setSlice(AxisConstants.Z_AXIS, z);
+
+	private void orthoListener() {
+		// listen for changes to the 2D orthoviewer's state and update the
+		// 3D orthoviewer position accordingly
+		int x2 = 5, y2 = 10, z2 = 15;// test values
+		ortho3D.setSlice(AxisConstants.X_AXIS, x2);
+		ortho3D.setSlice(AxisConstants.Y_AXIS, y2);
+		ortho3D.setSlice(AxisConstants.Z_AXIS, z2);
+
+		// also listen for changes to the 3D ortho state and update the 2D
+		// viewer accordingly
+		int x3, y3, z3;
+		x3 = ortho3D.getSlice(AxisConstants.X_AXIS);
+		y3 = ortho3D.getSlice(AxisConstants.Y_AXIS);
+		z3 = ortho3D.getSlice(AxisConstants.Z_AXIS);
 		
+		this.imp.setSlice(z3);
+		orthoViewer.imageUpdated(imp);
+	
+	
 	}
 }
