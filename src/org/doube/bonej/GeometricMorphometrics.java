@@ -2,6 +2,7 @@ package org.doube.bonej;
 
 import java.awt.event.MouseEvent;
 
+import javax.media.j3d.View;
 import javax.vecmath.Color3f;
 
 import org.doube.util.ImageCheck;
@@ -15,6 +16,7 @@ import ij.plugin.PlugIn;
 import ij3d.AxisConstants;
 import ij3d.Content;
 import ij3d.Image3DUniverse;
+import ij3d.UniverseListener;
 
 /**
  * 
@@ -30,11 +32,14 @@ import ij3d.Image3DUniverse;
  * @author Michael Doube
  * 
  */
-public class GeometricMorphometrics implements PlugIn {
+public class GeometricMorphometrics implements PlugIn, UniverseListener {
 	private Image3DUniverse univ;
 	private Orthogonal_Views orthoViewer;
 	private ImagePlus imp;
 	private OrthoGroup ortho3D;
+	/** Position of the orthoviewers */
+	private int x, y, z;
+	private int resampling = 2;
 
 	public void run(String arg) {
 		if (!ImageCheck.checkEnvironment())
@@ -52,8 +57,8 @@ public class GeometricMorphometrics implements PlugIn {
 		univ = new Image3DUniverse();
 		show3DVolume();
 		show3DOrtho();
+		univ.addUniverseListener(this);
 		univ.show();
-		orthoListener();
 	}
 
 	private void show3DOrtho() {
@@ -62,8 +67,8 @@ public class GeometricMorphometrics implements PlugIn {
 		if (c == null) {
 			try {
 				univ.addOrthoslice(imp, (new Color3f(1.0f, 1.0f, 1.0f)),
-						orthoTitle, 0, (new boolean[] { true, true, true }), 2)
-						.setLocked(true);
+						orthoTitle, 0, (new boolean[] { true, true, true }),
+						resampling).setLocked(true);
 				c = univ.getContent(orthoTitle);
 				ortho3D = (OrthoGroup) c.getContent();
 			} catch (NullPointerException npe) {
@@ -86,7 +91,7 @@ public class GeometricMorphometrics implements PlugIn {
 			try {
 				univ.addVoltex(imp, new Color3f(1.0f, 1.0f, 1.0f),
 						imp.getTitle(), 0, new boolean[] { true, true, true },
-						2).setLocked(true);
+						resampling).setLocked(true);
 			} catch (NullPointerException npe) {
 				IJ.log("3D Viewer was closed before rendering completed.");
 			}
@@ -101,24 +106,95 @@ public class GeometricMorphometrics implements PlugIn {
 		}
 	}
 
-	private void orthoListener() {
-		// listen for changes to the 2D orthoviewer's state and update the
-		// 3D orthoviewer position accordingly
-		int x2 = 5, y2 = 10, z2 = 15;// test values
-		ortho3D.setSlice(AxisConstants.X_AXIS, x2);
-		ortho3D.setSlice(AxisConstants.Y_AXIS, y2);
-		ortho3D.setSlice(AxisConstants.Z_AXIS, z2);
+	/**
+	 * Updates the 2D and 3D orthoviewers so they are displaying the same slices
+	 */
+	private void syncViewers() {
+		// x, y and z are at the last synched position
 
-		// also listen for changes to the 3D ortho state and update the 2D
-		// viewer accordingly
-		int x3, y3, z3;
-		x3 = ortho3D.getSlice(AxisConstants.X_AXIS);
-		y3 = ortho3D.getSlice(AxisConstants.Y_AXIS);
-		z3 = ortho3D.getSlice(AxisConstants.Z_AXIS);
-		
-		this.imp.setSlice(z3);
-		orthoViewer.imageUpdated(imp);
-	
-	
+		// get the 2D orthoviewer's state
+		int[] crossLoc = orthoViewer.getCrossLoc();
+		int x2 = crossLoc[0];
+		int y2 = crossLoc[1];
+		int z2 = crossLoc[2];
+
+		// if the change was in the 2D viewer, update the 3D viewer
+		if (x2 != x || y2 != y || z2 != z) {
+			x = x2;
+			y = y2;
+			z = z2;
+			ortho3D.setSlice(AxisConstants.X_AXIS, x);
+			ortho3D.setSlice(AxisConstants.Y_AXIS, y);
+			ortho3D.setSlice(AxisConstants.Z_AXIS, z);
+			return;
+		}
+
+		// get the 3D orthoviewer's state
+		int x3 = ortho3D.getSlice(AxisConstants.X_AXIS) * resampling;
+		int y3 = ortho3D.getSlice(AxisConstants.Y_AXIS) * resampling;
+		int z3 = (ortho3D.getSlice(AxisConstants.Z_AXIS) + 1) * resampling;
+
+		// if the change was in the 3D viewer, update the 2D viewer
+		if (x3 != x || y3 != y || z3 != z) {
+			x = x3;
+			y = y3;
+			z = z3;
+			orthoViewer.setCrossLoc(x, y, z);
+			return;
+		}
+		return;
+	}
+
+	@Override
+	public void canvasResized() {
+		syncViewers();
+	}
+
+	@Override
+	public void contentAdded(Content c) {
+		syncViewers();
+
+	}
+
+	@Override
+	public void contentChanged(Content c) {
+		syncViewers();
+
+	}
+
+	@Override
+	public void contentRemoved(Content c) {
+		syncViewers();
+
+	}
+
+	@Override
+	public void contentSelected(Content c) {
+		syncViewers();
+
+	}
+
+	@Override
+	public void transformationFinished(View view) {
+		syncViewers();
+
+	}
+
+	@Override
+	public void transformationStarted(View view) {
+		syncViewers();
+
+	}
+
+	@Override
+	public void transformationUpdated(View view) {
+		syncViewers();
+
+	}
+
+	@Override
+	public void universeClosed() {
+		syncViewers();
+
 	}
 }
