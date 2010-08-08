@@ -1,6 +1,15 @@
 package org.doube.bonej;
 
+import java.awt.Component;
+import java.awt.event.AdjustmentListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
+import java.awt.event.WindowListener;
 
 import javax.media.j3d.View;
 import javax.vecmath.Color3f;
@@ -9,8 +18,11 @@ import org.doube.util.ImageCheck;
 
 import orthoslice.OrthoGroup;
 
+import ij.Executer;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.gui.ImageCanvas;
+import ij.gui.ScrollbarWithLabel;
 import ij.plugin.Orthogonal_Views;
 import ij.plugin.PlugIn;
 import ij3d.AxisConstants;
@@ -32,10 +44,12 @@ import ij3d.UniverseListener;
  * @author Michael Doube
  * 
  */
-public class GeometricMorphometrics implements PlugIn, UniverseListener {
+public class GeometricMorphometrics implements PlugIn, UniverseListener,
+		MouseListener, KeyListener {
 	private Image3DUniverse univ;
 	private Orthogonal_Views orthoViewer;
 	private ImagePlus imp;
+	private ImageCanvas canvas;
 	private OrthoGroup ortho3D;
 	/** Position of the orthoviewers */
 	private int x, y, z;
@@ -57,8 +71,16 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener {
 		univ = new Image3DUniverse();
 		show3DVolume();
 		show3DOrtho();
-		univ.addUniverseListener(this);
 		univ.show();
+		canvas = imp.getCanvas();
+		addListeners();
+	}
+
+	private void addListeners() {
+		univ.addUniverseListener(this);
+		canvas.addMouseListener(this);
+		// canvas.addMouseMotionListener(this);
+		canvas.addKeyListener(this);
 	}
 
 	private void show3DOrtho() {
@@ -111,7 +133,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener {
 	 */
 	private void syncViewers() {
 		// x, y and z are at the last synched position
-
+		IJ.log("Start: (" + x + ", " + y + ", " + z + ")");
 		// get the 2D orthoviewer's state
 		int[] crossLoc = orthoViewer.getCrossLoc();
 		int x2 = crossLoc[0];
@@ -123,9 +145,10 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener {
 			x = x2;
 			y = y2;
 			z = z2;
-			ortho3D.setSlice(AxisConstants.X_AXIS, x);
-			ortho3D.setSlice(AxisConstants.Y_AXIS, y);
-			ortho3D.setSlice(AxisConstants.Z_AXIS, z);
+			ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
+			ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
+			ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling - resampling);
+			IJ.log("End: (" + x + ", " + y + ", " + z + ")");
 			return;
 		}
 
@@ -135,11 +158,13 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener {
 		int z3 = (ortho3D.getSlice(AxisConstants.Z_AXIS) + 1) * resampling;
 
 		// if the change was in the 3D viewer, update the 2D viewer
+		// have to be able to handle differences due to resampling
 		if (x3 != x || y3 != y || z3 != z) {
 			x = x3;
 			y = y3;
 			z = z3;
 			orthoViewer.setCrossLoc(x, y, z);
+			IJ.log("End: (" + x + ", " + y + ", " + z + ")");
 			return;
 		}
 		return;
@@ -194,7 +219,39 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener {
 
 	@Override
 	public void universeClosed() {
-		syncViewers();
+	}
 
+	@Override
+	public void mouseClicked(MouseEvent e) {
+	}
+
+	@Override
+	public void mouseEntered(MouseEvent e) {
+	}
+
+	@Override
+	public void mouseExited(MouseEvent e) {
+	}
+
+	@Override
+	public void mousePressed(MouseEvent e) {
+	}
+
+	@Override
+	public void mouseReleased(MouseEvent e) {
+		syncViewers();
+	}
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+		syncViewers();
+	}
+
+	@Override
+	public void keyTyped(KeyEvent e) {
 	}
 }
