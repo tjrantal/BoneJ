@@ -66,8 +66,12 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 			return;
 		}
 
-		orthoViewer = new Orthogonal_Views();
-		orthoViewer.run("");
+		orthoViewer = Orthogonal_Views.getInstance();
+		if (orthoViewer == null) {
+			new Orthogonal_Views().run("");
+			orthoViewer = Orthogonal_Views.getInstance();
+		}
+
 		univ = new Image3DUniverse();
 		show3DVolume();
 		show3DOrtho();
@@ -133,6 +137,8 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	 */
 	private void syncViewers() {
 		// x, y and z are at the last synched position
+		// z is 0-based, so z0 = slice 1
+
 		IJ.log("Start: (" + x + ", " + y + ", " + z + ")");
 		// get the 2D orthoviewer's state
 		int[] crossLoc = orthoViewer.getCrossLoc();
@@ -140,29 +146,38 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		int y2 = crossLoc[1];
 		int z2 = crossLoc[2];
 
+		// get the 3D orthoviewer's state
+		int x3 = ortho3D.getSlice(AxisConstants.X_AXIS);
+		int y3 = ortho3D.getSlice(AxisConstants.Y_AXIS);
+		int z3 = ortho3D.getSlice(AxisConstants.Z_AXIS);
+
 		// if the change was in the 2D viewer, update the 3D viewer
+		// 2D viewer state must always exactly match (x, y, z)
+		// but 3D viewer can be sloppy
 		if (x2 != x || y2 != y || z2 != z) {
 			x = x2;
 			y = y2;
 			z = z2;
-			ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
-			ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
-			ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling - resampling);
+			if (x < x3 * resampling || x >= (x3 + 1) * resampling
+					|| y < y3 * resampling || y >= (y3 + 1) * resampling
+					|| z < z3 * resampling || z >= (z3 + 1) * resampling) {
+				ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
+				ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
+				ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling);
+			}
 			IJ.log("End: (" + x + ", " + y + ", " + z + ")");
 			return;
 		}
 
-		// get the 3D orthoviewer's state
-		int x3 = ortho3D.getSlice(AxisConstants.X_AXIS) * resampling;
-		int y3 = ortho3D.getSlice(AxisConstants.Y_AXIS) * resampling;
-		int z3 = (ortho3D.getSlice(AxisConstants.Z_AXIS) + 1) * resampling;
-
 		// if the change was in the 3D viewer, update the 2D viewer
-		// have to be able to handle differences due to resampling
-		if (x3 != x || y3 != y || z3 != z) {
-			x = x3;
-			y = y3;
-			z = z3;
+		// 3D viewer state has tolerance to not exactly match (x, y, z) due to
+		// resampling
+		if (x3 * resampling > x || (x3 + 1) * resampling <= x
+				|| y3 * resampling > y || (y3 + 1) * resampling <= y
+				|| z3 * resampling > z || (z3 + 1) * resampling <= z) {
+			x = x3 * resampling;
+			y = y3 * resampling;
+			z = z3 * resampling;
 			orthoViewer.setCrossLoc(x, y, z);
 			IJ.log("End: (" + x + ", " + y + ", " + z + ")");
 			return;
