@@ -1,6 +1,7 @@
 package org.doube.bonej;
 
 import java.awt.Component;
+import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -9,7 +10,6 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
-import java.awt.event.WindowListener;
 
 import javax.media.j3d.View;
 import javax.vecmath.Color3f;
@@ -18,10 +18,10 @@ import org.doube.util.ImageCheck;
 
 import orthoslice.OrthoGroup;
 
-import ij.Executer;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.ImageCanvas;
+import ij.gui.ImageWindow;
 import ij.gui.ScrollbarWithLabel;
 import ij.plugin.Orthogonal_Views;
 import ij.plugin.PlugIn;
@@ -45,11 +45,12 @@ import ij3d.UniverseListener;
  * 
  */
 public class GeometricMorphometrics implements PlugIn, UniverseListener,
-		MouseListener, KeyListener {
+		MouseListener, MouseWheelListener, MouseMotionListener, KeyListener, AdjustmentListener {
 	private Image3DUniverse univ;
 	private Orthogonal_Views orthoViewer;
 	private ImagePlus imp;
 	private ImageCanvas canvas;
+	private ImageWindow win;
 	private OrthoGroup ortho3D;
 	/** Position of the orthoviewers */
 	private int x, y, z;
@@ -62,7 +63,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		if (this.imp == null)
 			return;
 		if (!(new ImageCheck()).isMultiSlice(imp)) {
-			IJ.error("");
+			IJ.error("Multi-slice stack expected");
 			return;
 		}
 
@@ -77,14 +78,18 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		show3DOrtho();
 		univ.show();
 		canvas = imp.getCanvas();
+		win = imp.getWindow();
 		addListeners();
 	}
 
 	private void addListeners() {
 		univ.addUniverseListener(this);
 		canvas.addMouseListener(this);
-		// canvas.addMouseMotionListener(this);
+		canvas.addMouseMotionListener(this);
 		canvas.addKeyListener(this);
+		win.addMouseWheelListener((MouseWheelListener) this);
+		Component[] c = win.getComponents();
+		((ScrollbarWithLabel) c[1]).addAdjustmentListener ((AdjustmentListener) this);
 	}
 
 	private void show3DOrtho() {
@@ -138,8 +143,6 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	private void syncViewers() {
 		// x, y and z are at the last synched position
 		// z is 0-based, so z0 = slice 1
-
-		IJ.log("Start: (" + x + ", " + y + ", " + z + ")");
 		// get the 2D orthoviewer's state
 		int[] crossLoc = orthoViewer.getCrossLoc();
 		int x2 = crossLoc[0];
@@ -165,7 +168,6 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 				ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
 				ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling);
 			}
-			IJ.log("End: (" + x + ", " + y + ", " + z + ")");
 			return;
 		}
 
@@ -179,7 +181,6 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 			y = y3 * resampling;
 			z = z3 * resampling;
 			orthoViewer.setCrossLoc(x, y, z);
-			IJ.log("End: (" + x + ", " + y + ", " + z + ")");
 			return;
 		}
 		return;
@@ -268,5 +269,25 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 
 	@Override
 	public void keyTyped(KeyEvent e) {
+	}
+
+	@Override
+	public void mouseWheelMoved(MouseWheelEvent e) {
+		syncViewers();
+	}
+
+	@Override
+	public void mouseDragged(MouseEvent e) {
+		syncViewers();
+	}
+
+	@Override
+	public void mouseMoved(MouseEvent e) {
+		
+	}
+
+	@Override
+	public void adjustmentValueChanged(AdjustmentEvent e) {
+		syncViewers();
 	}
 }
