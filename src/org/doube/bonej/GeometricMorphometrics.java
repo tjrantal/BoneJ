@@ -1,5 +1,23 @@
 package org.doube.bonej;
 
+/** 
+ * Geometric Morphometrics ImageJ plugin Copyright 2010 Michael Doube 
+ *
+ *This program is free software: you can redistribute it and/or modify
+ *it under the terms of the GNU General Public License as published by
+ *the Free Software Foundation, either version 3 of the License, or
+ *(at your option) any later version.
+ *
+ *This program is distributed in the hope that it will be useful,
+ *but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *GNU General Public License for more details.
+ *
+ *You should have received a copy of the GNU General Public License
+ *along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 import java.awt.Component;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
@@ -45,7 +63,8 @@ import ij3d.UniverseListener;
  * 
  */
 public class GeometricMorphometrics implements PlugIn, UniverseListener,
-		MouseListener, MouseWheelListener, MouseMotionListener, KeyListener, AdjustmentListener {
+		MouseListener, MouseWheelListener, MouseMotionListener, KeyListener,
+		AdjustmentListener {
 	private Image3DUniverse univ;
 	private Orthogonal_Views orthoViewer;
 	private ImagePlus imp;
@@ -89,10 +108,12 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		canvas.addKeyListener(this);
 		win.addMouseWheelListener((MouseWheelListener) this);
 		Component[] c = win.getComponents();
-		((ScrollbarWithLabel) c[1]).addAdjustmentListener ((AdjustmentListener) this);
+		((ScrollbarWithLabel) c[1])
+				.addAdjustmentListener((AdjustmentListener) this);
 	}
 
 	private void show3DOrtho() {
+		// TODO handle non-8-bit & non-RGB images
 		String orthoTitle = "Ortho " + imp.getTitle();
 		Content c = univ.getContent(orthoTitle);
 		if (c == null) {
@@ -117,6 +138,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	}
 
 	private void show3DVolume() {
+		// TODO handle non-8-bit & non-RGB images
 		Content c = univ.getContent("Ortho " + imp.getTitle());
 		if (c == null) {
 			try {
@@ -283,7 +305,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 
 	@Override
 	public void mouseMoved(MouseEvent e) {
-		
+
 	}
 
 	@Override
