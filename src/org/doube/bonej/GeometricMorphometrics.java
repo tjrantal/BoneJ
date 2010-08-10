@@ -28,16 +28,23 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.media.j3d.View;
 import javax.vecmath.Color3f;
+import javax.vecmath.Point3f;
 
+import org.doube.bonej.geomorph.Landmark;
 import org.doube.util.ImageCheck;
+
+import customnode.CustomPointMesh;
 
 import orthoslice.OrthoGroup;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.gui.GenericDialog;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.ScrollbarWithLabel;
@@ -74,6 +81,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	/** Position of the orthoviewers */
 	private int x, y, z;
 	private int resampling = 2;
+	private ArrayList<Landmark> landmarks;
 
 	public void run(String arg) {
 		if (!ImageCheck.checkEnvironment())
@@ -99,6 +107,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		canvas = imp.getCanvas();
 		win = imp.getWindow();
 		addListeners();
+		landmarks = new ArrayList<Landmark>();
 	}
 
 	private void addListeners() {
@@ -118,11 +127,12 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		Content c = univ.getContent(orthoTitle);
 		if (c == null) {
 			try {
-				univ.addOrthoslice(imp, (new Color3f(1.0f, 1.0f, 1.0f)),
+				c = univ.addOrthoslice(imp, (new Color3f(1.0f, 1.0f, 1.0f)),
 						orthoTitle, 0, (new boolean[] { true, true, true }),
-						resampling).setLocked(true);
-				c = univ.getContent(orthoTitle);
+						resampling);
+				c.setName(orthoTitle);
 				ortho3D = (OrthoGroup) c.getContent();
+				c.setLocked(true);
 			} catch (NullPointerException npe) {
 				IJ.log("3D Viewer was closed before rendering completed.");
 			}
@@ -139,12 +149,13 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 
 	private void show3DVolume() {
 		// TODO handle non-8-bit & non-RGB images
-		Content c = univ.getContent("Ortho " + imp.getTitle());
+		Content c = univ.getContent(imp.getTitle());
 		if (c == null) {
 			try {
-				univ.addVoltex(imp, new Color3f(1.0f, 1.0f, 1.0f),
+				Content d = univ.addVoltex(imp, new Color3f(1.0f, 1.0f, 1.0f),
 						imp.getTitle(), 0, new boolean[] { true, true, true },
-						resampling).setLocked(true);
+						resampling);
+				d.setLocked(true);
 			} catch (NullPointerException npe) {
 				IJ.log("3D Viewer was closed before rendering completed.");
 			}
@@ -208,6 +219,27 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		return;
 	}
 
+	/**
+	 * Display the landmarks in both 3D and 2D viewers
+	 */
+	private void updateLandmarks() {
+		for (Landmark l : landmarks) {
+			//check if landmark is already in 3D viewer
+			//and add if it is new
+			String name = l.getName();
+			if (univ.getContent(name) == null) {
+				Point3f point = new Point3f((float) l.getX(), (float) l.getY(),
+						(float) l.getZ());
+				CustomPointMesh cpm = new CustomPointMesh(new ArrayList<Point3f>());
+				cpm.addPoint(point);
+				cpm.setColor(new Color3f(0.0f, 0.0f, 1.0f));
+				cpm.setPointSize(5.0f);
+				Content c = univ.addCustomMesh(cpm, name);
+				c.setLocked(true);
+			}
+		}
+	}
+
 	@Override
 	public void canvasResized() {
 		syncViewers();
@@ -261,6 +293,22 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 
 	@Override
 	public void mouseClicked(MouseEvent e) {
+		if (IJ.controlKeyDown()) {
+			double px = e.getX() * imp.getCalibration().pixelWidth;
+			double py = e.getY() * imp.getCalibration().pixelHeight;
+			double pz = (imp.getCurrentSlice() - 1)
+					* imp.getCalibration().pixelDepth;
+			GenericDialog gd = new GenericDialog("New Landmark");
+			gd.addMessage("Adding a new landmark...");
+			gd.addStringField("Name", "", 12);
+			gd.showDialog();
+			if (gd.wasCanceled())
+				return;
+			String name = gd.getNextString();
+			Landmark l = new Landmark(px, py, pz, name);
+			landmarks.add(l);
+			updateLandmarks();
+		}
 	}
 
 	@Override
