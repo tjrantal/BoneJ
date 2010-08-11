@@ -41,6 +41,9 @@ import org.doube.util.ImageCheck;
 import customnode.CustomPointMesh;
 
 import orthoslice.OrthoGroup;
+import vib.BenesNamedPoint;
+import vib.PointList;
+import vib.PointList.PointListListener;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -54,6 +57,9 @@ import ij3d.AxisConstants;
 import ij3d.Content;
 import ij3d.Image3DUniverse;
 import ij3d.UniverseListener;
+import ij3d.pointlist.PointListDialog;
+import ij3d.pointlist.PointListPanel;
+import ij3d.pointlist.PointListShape;
 
 /**
  * 
@@ -71,7 +77,7 @@ import ij3d.UniverseListener;
  */
 public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		MouseListener, MouseWheelListener, MouseMotionListener, KeyListener,
-		AdjustmentListener {
+		AdjustmentListener, PointListListener {
 	private Image3DUniverse univ;
 	private Orthogonal_Views orthoViewer;
 	private ImagePlus imp;
@@ -82,6 +88,10 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	private int x, y, z;
 	private int resampling = 2;
 	private ArrayList<Landmark> landmarks;
+	private PointList pointList;
+	private PointListShape plShape;
+	private PointListPanel plPanel;
+	private PointListDialog pld = null;
 
 	public void run(String arg) {
 		if (!ImageCheck.checkEnvironment())
@@ -106,6 +116,14 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		univ.show();
 		canvas = imp.getCanvas();
 		win = imp.getWindow();
+		pointList = new PointList();
+		plShape = new PointListShape(pointList);
+		plShape.setPickable(false);
+		plShape.setRadius(10.0f);
+		plShape.setColor(new Color3f(1.0f, 1.0f, 0.0f));
+		plPanel = new PointListPanel("Landmarks", pointList);
+		pld = univ.getPointListDialog();
+		pld.addPointList("Landmarks", plPanel);
 		addListeners();
 		landmarks = new ArrayList<Landmark>();
 	}
@@ -119,6 +137,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		Component[] c = win.getComponents();
 		((ScrollbarWithLabel) c[1])
 				.addAdjustmentListener((AdjustmentListener) this);
+		pointList.addPointListListener(this);
 	}
 
 	private void show3DOrtho() {
@@ -156,6 +175,9 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 						imp.getTitle(), 0, new boolean[] { true, true, true },
 						resampling);
 				d.setLocked(true);
+				d.setPointListDialog(pld);
+				d.setLandmarkPointSize(10.0f);
+				d.showPointList(true);
 			} catch (NullPointerException npe) {
 				IJ.log("3D Viewer was closed before rendering completed.");
 			}
@@ -224,18 +246,24 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	 */
 	private void updateLandmarks() {
 		for (Landmark l : landmarks) {
-			//check if landmark is already in 3D viewer
-			//and add if it is new
+			// check if landmark is already in 3D viewer
+			// and add if it is new.  Use Bene's Point for 3D visualisation
 			String name = l.getName();
-			if (univ.getContent(name) == null) {
-				Point3f point = new Point3f((float) l.getX(), (float) l.getY(),
-						(float) l.getZ());
-				CustomPointMesh cpm = new CustomPointMesh(new ArrayList<Point3f>());
-				cpm.addPoint(point);
-				cpm.setColor(new Color3f(0.0f, 0.0f, 1.0f));
-				cpm.setPointSize(5.0f);
-				Content c = univ.addCustomMesh(cpm, name);
-				c.setLocked(true);
+			if (pointList.get(name) == null) {
+				BenesNamedPoint bnp = new BenesNamedPoint(l.getName(), l.getX(), l.getY(), l.getZ());
+				pointList.add(bnp);
+				pointList.highlight(bnp);
+				return;
+			} else {
+				
+				
+				// point moved in 3D viewer
+				// check that the Landmark position matches the point's position
+				// in the 3D viewer and update the Landmark, then the 2D viewer,
+				// then return
+
+				// point moved in 2D viewer
+
 			}
 		}
 	}
@@ -359,5 +387,39 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	@Override
 	public void adjustmentValueChanged(AdjustmentEvent e) {
 		syncViewers();
+	}
+
+	@Override
+	public void added(BenesNamedPoint p) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void highlighted(BenesNamedPoint p) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void moved(BenesNamedPoint p) {
+		updateLandmarks();
+	}
+
+	@Override
+	public void removed(BenesNamedPoint p) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void renamed(BenesNamedPoint p) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void reordered() {
+		// TODO Auto-generated method stub
+		
 	}
 }
