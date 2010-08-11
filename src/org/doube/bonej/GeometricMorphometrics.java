@@ -116,10 +116,11 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		univ.show();
 		canvas = imp.getCanvas();
 		win = imp.getWindow();
-		pointList = new PointList();
+		pointList = univ.getContent(imp.getTitle()).getPointList();
+		univ.getContent(imp.getTitle()).setLandmarkPointSize(
+				(float) (imp.getCalibration().pixelWidth * 5));
 		plShape = new PointListShape(pointList);
-		plShape.setPickable(false);
-		plShape.setRadius(10.0f);
+		plShape.setPickable(true);
 		plShape.setColor(new Color3f(1.0f, 1.0f, 0.0f));
 		plPanel = new PointListPanel("Landmarks", pointList);
 		pld = univ.getPointListDialog();
@@ -177,6 +178,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 				d.setLocked(true);
 				d.setPointListDialog(pld);
 				d.setLandmarkPointSize(10.0f);
+				pointList = d.getPointList();
 				d.showPointList(true);
 			} catch (NullPointerException npe) {
 				IJ.log("3D Viewer was closed before rendering completed.");
@@ -247,16 +249,16 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	private void updateLandmarks() {
 		for (Landmark l : landmarks) {
 			// check if landmark is already in 3D viewer
-			// and add if it is new.  Use Bene's Point for 3D visualisation
+			// and add if it is new. Use Bene's Point for 3D visualisation
 			String name = l.getName();
 			if (pointList.get(name) == null) {
-				BenesNamedPoint bnp = new BenesNamedPoint(l.getName(), l.getX(), l.getY(), l.getZ());
+				BenesNamedPoint bnp = new BenesNamedPoint(l.getName(),
+						l.getX(), l.getY(), l.getZ());
 				pointList.add(bnp);
 				pointList.highlight(bnp);
 				return;
 			} else {
-				
-				
+
 				// point moved in 3D viewer
 				// check that the Landmark position matches the point's position
 				// in the 3D viewer and update the Landmark, then the 2D viewer,
@@ -397,7 +399,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	@Override
 	public void highlighted(BenesNamedPoint p) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
@@ -408,18 +410,18 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	@Override
 	public void removed(BenesNamedPoint p) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void renamed(BenesNamedPoint p) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void reordered() {
 		// TODO Auto-generated method stub
-		
+
 	}
 }
