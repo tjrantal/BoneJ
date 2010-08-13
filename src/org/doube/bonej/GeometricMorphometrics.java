@@ -29,16 +29,12 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
-import java.util.List;
 
 import javax.media.j3d.View;
 import javax.vecmath.Color3f;
-import javax.vecmath.Point3f;
 
 import org.doube.bonej.geomorph.Landmark;
 import org.doube.util.ImageCheck;
-
-import customnode.CustomPointMesh;
 
 import orthoslice.OrthoGroup;
 import vib.BenesNamedPoint;
