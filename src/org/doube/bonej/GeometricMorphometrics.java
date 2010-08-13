@@ -51,6 +51,7 @@ import ij.gui.GenericDialog;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.ScrollbarWithLabel;
+import ij.measure.Calibration;
 import ij.plugin.Orthogonal_Views;
 import ij.plugin.PlugIn;
 import ij3d.AxisConstants;
@@ -324,16 +325,11 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	@Override
 	public void mouseClicked(MouseEvent e) {
 		if (IJ.controlKeyDown()) {
-			double mag = imp.getCanvas().getMagnification();
-			IJ.log("mag = "+mag);
-			double px = e.getX() * imp.getCalibration().pixelWidth;
-			double py = e.getY() * imp.getCalibration().pixelHeight;
-			double pz = (imp.getCurrentSlice() - 1)
-					* imp.getCalibration().pixelDepth;
-			IJ.log("Mouse click recorded at ("+IJ.d2s(px,2)+", "+IJ.d2s(py,2)+", "+IJ.d2s(pz,2)+")");
-			px /= mag;
-			py /= mag;
-			//also have to correct for position of canvas in window
+			ImageCanvas canvas = imp.getCanvas();
+			Calibration cal = imp.getCalibration();
+			double px = canvas.offScreenX(e.getX()) * cal.pixelWidth;
+			double py = canvas.offScreenY(e.getY()) * cal.pixelHeight;
+			double pz = (imp.getCurrentSlice() - 1) * cal.pixelDepth;
 			GenericDialog gd = new GenericDialog("New Landmark");
 			gd.addMessage("Adding a new landmark...");
 			gd.addStringField("Name", "", 12);
