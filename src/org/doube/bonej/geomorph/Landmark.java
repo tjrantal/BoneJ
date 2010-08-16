@@ -9,11 +9,8 @@ import javax.vecmath.Point3d;
  * @author Michael Doube
  * 
  */
+@SuppressWarnings("serial")
 public class Landmark extends Point3d {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -4713913304554138975L;
 	/**
 	 * UNIX timestamp, the difference, measured in milliseconds, between the
 	 * current time and midnight, January 1, 1970 UTC.
@@ -36,6 +33,10 @@ public class Landmark extends Point3d {
 	public String getName() {
 		return name;
 	}
+	
+	public String getUnit(){
+		return spaceUnit;
+	}
 
 	public void set(double x, double y, double z, long t) {
 		this.x = x;
@@ -50,5 +51,9 @@ public class Landmark extends Point3d {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+	
+	public void setUnit(String unit){
+		this.spaceUnit = unit;
 	}
 }
