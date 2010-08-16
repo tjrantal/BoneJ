@@ -127,6 +127,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	}
 
 	private void addListeners() {
+		//Have to listen to XZ and YZ windows too
 		univ.addUniverseListener(this);
 		canvas.addMouseListener(this);
 		canvas.addMouseMotionListener(this);
@@ -321,11 +322,11 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	@Override
 	public void mouseClicked(MouseEvent e) {
 		if (IJ.controlKeyDown()) {
-			ImageCanvas canvas = imp.getCanvas();
+			int[] crossLoc = orthoViewer.getCrossLoc();
 			Calibration cal = imp.getCalibration();
-			double px = canvas.offScreenX(e.getX()) * cal.pixelWidth;
-			double py = canvas.offScreenY(e.getY()) * cal.pixelHeight;
-			double pz = (imp.getCurrentSlice() - 1) * cal.pixelDepth;
+			double px = crossLoc[0] * cal.pixelWidth;
+			double py = crossLoc[1] * cal.pixelHeight;
+			double pz = crossLoc[2] * cal.pixelDepth;
 			GenericDialog gd = new GenericDialog("New Landmark");
 			gd.addMessage("Adding a new landmark...");
 			gd.addStringField("Name", "", 12);
