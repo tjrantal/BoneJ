@@ -135,7 +135,7 @@ public class ShapeSkeletoniser implements PlugIn {
 	 * @param w
 	 * @param h
 	 * @param d
-	 * @return
+	 * @return true if the point is marked
 	 */
 	private boolean isMarked(short[][] workArray, int x, int y, int z, int w,
 			int h, int d) {
