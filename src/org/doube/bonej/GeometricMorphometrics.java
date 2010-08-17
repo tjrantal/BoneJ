@@ -77,7 +77,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		AdjustmentListener, PointListListener {
 	private Image3DUniverse univ;
 	private Orthogonal_Views orthoViewer;
-	private ImagePlus imp;
+	private ImagePlus imp, xz_imp, yz_imp;
 	private ImageCanvas canvas;
 	private ImageWindow win;
 	private OrthoGroup ortho3D;
@@ -112,6 +112,8 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		show3DOrtho();
 		univ.show();
 		canvas = imp.getCanvas();
+		xz_imp = orthoViewer.getXZImage();
+		yz_imp = orthoViewer.getYZImage();
 		win = imp.getWindow();
 		pointList = univ.getContent(imp.getTitle()).getPointList();
 		univ.getContent(imp.getTitle()).setLandmarkPointSize(
@@ -132,6 +134,12 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		canvas.addMouseListener(this);
 		canvas.addMouseMotionListener(this);
 		canvas.addKeyListener(this);
+		xz_imp.getCanvas().addMouseListener(this);
+		xz_imp.getCanvas().addMouseMotionListener(this);
+		xz_imp.getCanvas().addKeyListener(this);
+		yz_imp.getCanvas().addMouseListener(this);
+		yz_imp.getCanvas().addMouseMotionListener(this);
+		yz_imp.getCanvas().addKeyListener(this);
 		win.addMouseWheelListener((MouseWheelListener) this);
 		Component[] c = win.getComponents();
 		((ScrollbarWithLabel) c[1])
