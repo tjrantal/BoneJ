@@ -126,8 +126,8 @@ public class VolumeFraction implements PlugIn, DialogListener {
 		final Rectangle r = imp.getProcessor().getRoi();
 		final AtomicInteger ai = new AtomicInteger(1);
 		Thread[] threads = Multithreader.newThreads();
-		final long[] volTotalT = new long[nSlices];
-		final long[] volBoneT = new long[nSlices];
+		final long[] volTotalT = new long[nSlices+1];
+		final long[] volBoneT = new long[nSlices+1];
 		for (int thread = 0; thread < threads.length; thread++) {
 			threads[thread] = new Thread(new Runnable() {
 				public void run() {
@@ -159,7 +159,7 @@ public class VolumeFraction implements PlugIn, DialogListener {
 
 		long volTotal = 0;
 		long volBone = 0;
-		for (int i = 0; i < nSlices; i++) {
+		for (int i = 0; i <= nSlices; i++) {
 			volTotal += volTotalT[i];
 			volBone += volBoneT[i];
 		}
@@ -246,14 +246,14 @@ public class VolumeFraction implements PlugIn, DialogListener {
 		CustomTriangleMesh surface = new CustomTriangleMesh(points, colour,
 				0.0f);
 		IJ.showStatus("Calculating BV...");
-		double boneVolume = surface.getVolume();
+		double boneVolume = Math.abs(surface.getVolume());
 		ImagePlus maskImp = new ImagePlus("Mask", maskStack);
 		maskImp.setCalibration(imp.getCalibration());
 		IJ.showStatus("Creating surface mesh...");
 		points = mct.getTriangles(maskImp, 128, channels, resampling);
 		surface = new CustomTriangleMesh(points, colour, 0.0f);
 		IJ.showStatus("Calculating TV...");
-		double totalVolume = surface.getVolume();
+		double totalVolume = Math.abs(surface.getVolume());
 		double[] volumes = { boneVolume, totalVolume };
 		IJ.showStatus("");
 		return volumes;
