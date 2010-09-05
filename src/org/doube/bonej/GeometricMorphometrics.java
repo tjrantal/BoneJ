@@ -235,10 +235,10 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 			if (x < x3 * resampling || x >= (x3 + 1) * resampling
 					|| y < y3 * resampling || y >= (y3 + 1) * resampling
 					|| z < z3 * resampling || z >= (z3 + 1) * resampling) {
+				update(); //update the crosshairs in separate thread
 				ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
 				ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
 				ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling);
-				update();
 			}
 			return;
 		}
