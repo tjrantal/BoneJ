@@ -83,6 +83,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	private ImageWindow win;
 	private OrthoGroup ortho3D;
 	private Crosshairs crossHairs;
+	private Updater updater = new Updater();
 	/** Position of the orthoviewers */
 	private int x, y, z;
 	private int resampling = 2;
@@ -91,6 +92,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	private PointListShape plShape;
 	private PointListPanel plPanel;
 	private PointListDialog pld = null;
+	private Calibration cal;
 
 	public void run(String arg) {
 		if (!ImageCheck.checkEnvironment())
@@ -129,7 +131,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		addListeners();
 		landmarks = new ArrayList<Landmark>();
 		int[] c = orthoViewer.getCrossLoc();
-		Calibration cal = imp.getCalibration();
+		cal = imp.getCalibration();
 		crossHairs = new Crosshairs(c[0] * cal.pixelWidth, c[1]
 				* cal.pixelHeight, c[2] * cal.pixelDepth, univ);
 	}
@@ -223,8 +225,6 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		int y3 = ortho3D.getSlice(AxisConstants.Y_AXIS);
 		int z3 = ortho3D.getSlice(AxisConstants.Z_AXIS);
 
-		Calibration cal = imp.getCalibration();
-
 		// if the change was in the 2D viewer, update the 3D viewer
 		// 2D viewer state must always exactly match (x, y, z)
 		// but 3D viewer can be sloppy
@@ -238,9 +238,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 				ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
 				ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
 				ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling);
-				crossHairs.set(x * cal.pixelWidth, y * cal.pixelHeight, z
-						* cal.pixelDepth);
-				crossHairs.update();
+				update();
 			}
 			return;
 		}
@@ -442,4 +440,75 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		// TODO Auto-generated method stub
 
 	}
+
+	/**
+	 * Refresh the output windows. This is done by sending a signal to the
+	 * Updater() thread.
+	 */
+	void update() {
+		if (updater != null)
+			updater.doUpdate();
+	}
+
+	/**
+	 * Delegates the repainting of the 3D crosshairs windows to another thread.
+	 * 
+	 * Borrowed from the helper class in Othogonal_Views
+	 * 
+	 * @author Albert Cardona
+	 */
+	private class Updater extends Thread {
+		long request = 0;
+
+		// Constructor autostarts thread
+		Updater() {
+			super("3D Crosshairs Updater");
+			setPriority(Thread.MAX_PRIORITY);
+			start();
+		}
+
+		void doUpdate() {
+			if (isInterrupted())
+				return;
+			synchronized (this) {
+				request++;
+				notify();
+			}
+		}
+
+		void quit() {
+			IJ.wait(10);
+			interrupt();
+			synchronized (this) {
+				notify();
+			}
+		}
+
+		public void run() {
+			while (!isInterrupted()) {
+				try {
+					final long r;
+					synchronized (this) {
+						r = request;
+					}
+					// Call update from this thread
+					if (r > 0) {
+						crossHairs.set(x * cal.pixelWidth, y * cal.pixelHeight,
+								z * cal.pixelDepth);
+						crossHairs.update();
+					}
+					synchronized (this) {
+						if (r == request) {
+							request = 0; // reset
+							wait();
+						}
+						// else loop through to update again
+					}
+				} catch (Exception e) {
+				}
+			}
+		}
+
+	} // Updater class
+
 }
