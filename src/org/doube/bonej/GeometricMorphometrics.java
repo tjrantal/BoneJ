@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import javax.media.j3d.View;
 import javax.vecmath.Color3f;
 
+import org.doube.bonej.geomorph.Crosshairs;
 import org.doube.bonej.geomorph.Landmark;
 import org.doube.util.ImageCheck;
 
@@ -81,6 +82,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	private ImageCanvas canvas;
 	private ImageWindow win;
 	private OrthoGroup ortho3D;
+	private Crosshairs crossHairs;
 	/** Position of the orthoviewers */
 	private int x, y, z;
 	private int resampling = 2;
@@ -126,10 +128,14 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		pld.addPointList("Landmarks", plPanel);
 		addListeners();
 		landmarks = new ArrayList<Landmark>();
+		int[] c = orthoViewer.getCrossLoc();
+		Calibration cal = imp.getCalibration();
+		crossHairs = new Crosshairs(c[0] * cal.pixelWidth, c[1]
+				* cal.pixelHeight, c[2] * cal.pixelDepth, univ);
 	}
 
 	private void addListeners() {
-		//Have to listen to XZ and YZ windows too
+		// Have to listen to XZ and YZ windows too
 		univ.addUniverseListener(this);
 		canvas.addMouseListener(this);
 		canvas.addMouseMotionListener(this);
@@ -217,6 +223,8 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		int y3 = ortho3D.getSlice(AxisConstants.Y_AXIS);
 		int z3 = ortho3D.getSlice(AxisConstants.Z_AXIS);
 
+		Calibration cal = imp.getCalibration();
+
 		// if the change was in the 2D viewer, update the 3D viewer
 		// 2D viewer state must always exactly match (x, y, z)
 		// but 3D viewer can be sloppy
@@ -230,6 +238,9 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 				ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
 				ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
 				ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling);
+				crossHairs.set(x * cal.pixelWidth, y * cal.pixelHeight, z
+						* cal.pixelDepth);
+				crossHairs.update();
 			}
 			return;
 		}
