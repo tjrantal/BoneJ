@@ -463,7 +463,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		// Constructor autostarts thread
 		Updater() {
 			super("3D Crosshairs Updater");
-			setPriority(Thread.MAX_PRIORITY);
+			setPriority(Thread.NORM_PRIORITY);
 			start();
 		}
 
