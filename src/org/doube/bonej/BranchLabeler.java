@@ -71,7 +71,8 @@ public class BranchLabeler implements PlugIn {
 
 		// Process the skeleton and retrieve the Graphs for each tree
 		AnalyzeSkeleton as = new AnalyzeSkeleton();
-		as.run(AnalyzeSkeleton.NONE, pruneEnds, skeleton, imp, true, false);
+		as.setup("", skeleton);
+		as.run(AnalyzeSkeleton.NONE, pruneEnds, false, skeleton, true, false);
 		Graph[] graphs = as.getGraphs();
 		skeleton.close();
 		skeleton.flush();
