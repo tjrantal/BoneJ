@@ -148,7 +148,9 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		yz_imp.getCanvas().addMouseListener(this);
 		yz_imp.getCanvas().addMouseMotionListener(this);
 		yz_imp.getCanvas().addKeyListener(this);
-		win.addMouseWheelListener((MouseWheelListener) this);
+		win.addMouseWheelListener(this);
+		xz_imp.getWindow().addMouseWheelListener(this);
+		yz_imp.getWindow().addMouseWheelListener(this);
 		Component[] c = win.getComponents();
 		((ScrollbarWithLabel) c[1])
 				.addAdjustmentListener((AdjustmentListener) this);
