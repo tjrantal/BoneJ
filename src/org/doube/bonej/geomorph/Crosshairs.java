@@ -1,7 +1,12 @@
 package org.doube.bonej.geomorph;
 
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.ArrayList;
 
+import javax.media.j3d.Transform3D;
+import javax.media.j3d.TransformGroup;
+import javax.media.j3d.View;
 import javax.vecmath.Color3f;
 import javax.vecmath.Point3d;
 import javax.vecmath.Point3f;
@@ -9,95 +14,111 @@ import javax.vecmath.Point3f;
 import customnode.CustomLineMesh;
 
 import ij.IJ;
+import ij3d.Content;
 import ij3d.Image3DUniverse;
+import ij3d.UniverseListener;
 
 /**
  * 
  * 
  * @author Michael Doube
  */
-public class Crosshairs {
+public class Crosshairs implements UniverseListener, KeyListener {
 	private Image3DUniverse univ;
 	private double x, y, z;
-	private CustomLineMesh clm;
-	
-	public Crosshairs(double x, double y, double z, Image3DUniverse univ){
+	private CustomLineMesh clmX, clmY, clmZ;
+	private Content cX, cY, cZ;
+
+	public Crosshairs(double x, double y, double z, Image3DUniverse univ) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
 		this.univ = univ;
 		create();
 	}
-	
+
 	private void create() {
 		Point3d globalMax = new Point3d();
 		univ.getGlobalMaxPoint(globalMax);
-		
+
 		Point3d globalMin = new Point3d();
 		univ.getGlobalMinPoint(globalMin);
-		
-		ArrayList<Point3f> mesh = new ArrayList<Point3f>();
+
+		ArrayList<Point3f> meshZ = new ArrayList<Point3f>();
 		Point3f start1 = new Point3f();
 		start1.x = (float) x;
 		start1.y = (float) y;
 		start1.z = (float) globalMin.z;
-		mesh.add(start1);
+		meshZ.add(start1);
 
 		Point3f end1 = new Point3f();
 		end1.x = (float) x;
 		end1.y = (float) y;
 		end1.z = (float) globalMax.z;
-		mesh.add(end1);
+		meshZ.add(end1);
 
+		ArrayList<Point3f> meshY = new ArrayList<Point3f>();
 		Point3f start2 = new Point3f();
 		start2.x = (float) x;
 		start2.y = (float) globalMin.y;
 		start2.z = (float) z;
-		mesh.add(start2);
+		meshY.add(start2);
 
 		Point3f end2 = new Point3f();
 		end2.x = (float) x;
 		end2.y = (float) globalMax.y;
 		end2.z = (float) z;
-		mesh.add(end2);
+		meshY.add(end2);
 
+		ArrayList<Point3f> meshX = new ArrayList<Point3f>();
 		Point3f start3 = new Point3f();
 		start3.x = (float) globalMin.x;
 		start3.y = (float) y;
 		start3.z = (float) z;
-		mesh.add(start3);
+		meshX.add(start3);
 
 		Point3f end3 = new Point3f();
 		end3.x = (float) globalMax.x;
 		end3.y = (float) y;
 		end3.z = (float) z;
-		mesh.add(end3);
-		
-		clm = new customnode.CustomLineMesh(mesh, CustomLineMesh.PAIRWISE);
-		clm.setColor(new Color3f(1.0f, 1.0f, 0.0f));
-		
+		meshX.add(end3);
+
+		Color3f yellow = new Color3f(1.0f, 1.0f, 0.0f);
+		clmX = new customnode.CustomLineMesh(meshX);
+		clmY = new customnode.CustomLineMesh(meshY);
+		clmZ = new customnode.CustomLineMesh(meshZ);
+		clmX.setColor(yellow);
+		clmY.setColor(yellow);
+		clmZ.setColor(yellow);
 		try {
-			univ.addCustomMesh(clm, "Crosshairs");
+			cX = univ.addCustomMesh(clmX, "Crosshairs X");
+			cY = univ.addCustomMesh(clmY, "Crosshairs Y");
+			cZ = univ.addCustomMesh(clmZ, "Crosshairs Z");
+			cX.setLocked(true);
+			cY.setLocked(true);
+			cZ.setLocked(true);
 		} catch (NullPointerException npe) {
 			IJ.log("3D Viewer was closed before rendering completed.");
 			return;
 		}
+		univ.addUniverseListener(this);
+		univ.getCanvas().addKeyListener(this);
 	}
 
-	public void set(double x, double y, double z){
+	public void set(double x, double y, double z) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
 	}
-	
-	public void update(){
-		
+
+	public void update() {
+
 		Point3d globalMax = new Point3d();
 		univ.getGlobalMaxPoint(globalMax);
-		
+
 		Point3d globalMin = new Point3d();
 		univ.getGlobalMinPoint(globalMin);
-		
+
 		Point3f start1 = new Point3f();
 		start1.x = (float) x;
 		start1.y = (float) y;
@@ -127,12 +148,90 @@ public class Crosshairs {
 		end3.x = (float) globalMax.x;
 		end3.y = (float) y;
 		end3.z = (float) z;
-		
-		clm.setCoordinate(0, start1);
-		clm.setCoordinate(1, end1);
-		clm.setCoordinate(2, start2);
-		clm.setCoordinate(3, end2);
-		clm.setCoordinate(4, start3);
-		clm.setCoordinate(5, end3);
+
+		clmZ.setCoordinate(0, start1);
+		clmZ.setCoordinate(1, end1);
+		clmY.setCoordinate(0, start2);
+		clmY.setCoordinate(1, end2);
+		clmX.setCoordinate(0, start3);
+		clmX.setCoordinate(1, end3);
+	}
+
+	@Override
+	public void canvasResized() {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void contentAdded(Content c) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void contentChanged(Content c) {
+
+	}
+
+	@Override
+	public void contentRemoved(Content c) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void contentSelected(Content c) {
+
+	}
+
+	@Override
+	public void transformationFinished(View view) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void transformationStarted(View view) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void transformationUpdated(View view) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void universeClosed() {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+		// allow translation when shift is pressed
+		if (e.getKeyCode() == 16) {
+			cX.setLocked(false);
+			cY.setLocked(false);
+			cZ.setLocked(false);
+		}
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+		// prevent rotation
+		if (e.getKeyCode() == 16) {
+			cX.setLocked(true);
+			cY.setLocked(true);
+			cZ.setLocked(true);
+		}
+	}
+
+	@Override
+	public void keyTyped(KeyEvent e) {
+		// TODO Auto-generated method stub
+
 	}
 }
