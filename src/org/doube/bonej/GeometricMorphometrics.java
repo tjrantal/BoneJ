@@ -114,6 +114,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		univ = new Image3DUniverse();
 		show3DVolume();
 		show3DOrtho();
+		hide3DOrtho();
 		univ.show();
 		canvas = imp.getCanvas();
 		xz_imp = orthoViewer.getXZImage();
