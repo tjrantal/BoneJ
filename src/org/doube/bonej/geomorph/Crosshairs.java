@@ -157,6 +157,18 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		clmX.setCoordinate(1, end3);
 	}
 
+	public void show(){
+		cX.setVisible(true);
+		cY.setVisible(true);
+		cZ.setVisible(true);
+	}
+	
+	public void hide(){
+		cX.setVisible(false);
+		cY.setVisible(false);
+		cZ.setVisible(false);
+	}
+	
 	@Override
 	public void canvasResized() {
 		// TODO Auto-generated method stub
@@ -182,7 +194,7 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void contentSelected(Content c) {
-
+		
 	}
 
 	@Override
