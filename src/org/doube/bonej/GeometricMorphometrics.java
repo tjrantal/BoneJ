@@ -49,8 +49,10 @@ import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.ScrollbarWithLabel;
 import ij.measure.Calibration;
+import ij.plugin.Duplicator;
 import ij.plugin.Orthogonal_Views;
 import ij.plugin.PlugIn;
+import ij.process.StackConverter;
 import ij3d.AxisConstants;
 import ij3d.Content;
 import ij3d.Image3DUniverse;
@@ -159,12 +161,24 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	}
 
 	private void show3DOrtho() {
-		// TODO handle non-8-bit & non-RGB images
+		ImagePlus imp8 = new ImagePlus();
+		if (imp.getType() == ImagePlus.GRAY16
+				|| imp.getType() == ImagePlus.GRAY32) {
+			Duplicator dup = new Duplicator();
+			imp8 = dup.run(imp);
+			new StackConverter(imp8).convertToGray8();
+		} else if (imp.getType() == ImagePlus.COLOR_256) {
+			Duplicator dup = new Duplicator();
+			imp8 = dup.run(imp);
+			new StackConverter(imp8).convertToRGB();
+		} else {
+			imp8 = imp;
+		}
 		String orthoTitle = "Ortho " + imp.getTitle();
 		Content c = univ.getContent(orthoTitle);
 		if (c == null) {
 			try {
-				c = univ.addOrthoslice(imp, (new Color3f(1.0f, 1.0f, 1.0f)),
+				c = univ.addOrthoslice(imp8, (new Color3f(1.0f, 1.0f, 1.0f)),
 						orthoTitle, 0, (new boolean[] { true, true, true }),
 						resampling);
 				c.setName(orthoTitle);
@@ -185,11 +199,23 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	}
 
 	private void show3DVolume() {
-		// TODO handle non-8-bit & non-RGB images
+		ImagePlus imp8 = new ImagePlus();
+		if (imp.getType() == ImagePlus.GRAY16
+				|| imp.getType() == ImagePlus.GRAY32) {
+			Duplicator dup = new Duplicator();
+			imp8 = dup.run(imp);
+			new StackConverter(imp8).convertToGray8();
+		} else if (imp.getType() == ImagePlus.COLOR_256) {
+			Duplicator dup = new Duplicator();
+			imp8 = dup.run(imp);
+			new StackConverter(imp8).convertToRGB();
+		} else {
+			imp8 = imp;
+		}
 		Content c = univ.getContent(imp.getTitle());
 		if (c == null) {
 			try {
-				Content d = univ.addVoltex(imp, new Color3f(1.0f, 1.0f, 1.0f),
+				Content d = univ.addVoltex(imp8, new Color3f(1.0f, 1.0f, 1.0f),
 						imp.getTitle(), 0, new boolean[] { true, true, true },
 						resampling);
 				d.setLocked(true);
@@ -238,7 +264,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 			if (x < x3 * resampling || x >= (x3 + 1) * resampling
 					|| y < y3 * resampling || y >= (y3 + 1) * resampling
 					|| z < z3 * resampling || z >= (z3 + 1) * resampling) {
-				update(); //update the crosshairs in separate thread
+				update(); // update the crosshairs in separate thread
 				ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
 				ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
 				ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling);
