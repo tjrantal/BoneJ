@@ -24,6 +24,7 @@ import ij3d.UniverseListener;
  * @author Michael Doube
  */
 public class Crosshairs implements UniverseListener, KeyListener {
+	private static final Transform3D emptyTransform = new Transform3D();
 	private Image3DUniverse univ;
 	private double x, y, z;
 	private CustomLineMesh clmX, clmY, clmZ;
@@ -83,17 +84,14 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		end3.z = (float) z;
 		meshX.add(end3);
 
-		Color3f yellow = new Color3f(1.0f, 1.0f, 0.0f);
 		clmX = new customnode.CustomLineMesh(meshX);
 		clmY = new customnode.CustomLineMesh(meshY);
 		clmZ = new customnode.CustomLineMesh(meshZ);
-		clmX.setColor(yellow);
-		clmY.setColor(yellow);
-		clmZ.setColor(yellow);
 		try {
 			cX = univ.addCustomMesh(clmX, "Crosshairs X");
 			cY = univ.addCustomMesh(clmY, "Crosshairs Y");
 			cZ = univ.addCustomMesh(clmZ, "Crosshairs Z");
+			resetColor();
 			cX.setLocked(true);
 			cY.setLocked(true);
 			cZ.setLocked(true);
@@ -155,18 +153,30 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		clmY.setCoordinate(1, end2);
 		clmX.setCoordinate(0, start3);
 		clmX.setCoordinate(1, end3);
+		
+		cX.setTransform(emptyTransform);
+		cY.setTransform(emptyTransform);
+		cZ.setTransform(emptyTransform);
+		
 	}
 
-	public void show(){
+	public void show() {
 		cX.setVisible(true);
 		cY.setVisible(true);
 		cZ.setVisible(true);
 	}
-	
-	public void hide(){
+
+	public void hide() {
 		cX.setVisible(false);
 		cY.setVisible(false);
 		cZ.setVisible(false);
+	}
+
+	private void resetColor() {
+		Color3f yellow = new Color3f(1.0f, 1.0f, 0.0f);
+		cX.setColor(yellow);
+		cY.setColor(yellow);
+		cZ.setColor(yellow);
 	}
 	
 	@Override
@@ -183,7 +193,7 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void contentChanged(Content c) {
-
+		IJ.log("Content changed: " + c.getName());
 	}
 
 	@Override
@@ -194,6 +204,7 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void contentSelected(Content c) {
+		resetColor();
 		Color3f red = new Color3f(1.0f, 0.0f, 0.0f);
 		if (c.equals(cX))
 			cX.setColor(red);
@@ -207,20 +218,17 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void transformationFinished(View view) {
-		// TODO Auto-generated method stub
-
+		IJ.log("Transformation finished");
 	}
 
 	@Override
 	public void transformationStarted(View view) {
-		// TODO Auto-generated method stub
-
+		IJ.log("Transformation started");
 	}
 
 	@Override
 	public void transformationUpdated(View view) {
-		// TODO Auto-generated method stub
-
+		IJ.log("Transformation updated");
 	}
 
 	@Override
@@ -243,13 +251,10 @@ public class Crosshairs implements UniverseListener, KeyListener {
 	public void keyReleased(KeyEvent e) {
 		// prevent rotation
 		if (e.getKeyCode() == 16) {
-			Color3f yellow = new Color3f(1.0f, 1.0f, 0.0f);
+			resetColor();
 			cX.setSelected(false);
 			cY.setSelected(false);
 			cZ.setSelected(false);
-			cX.setColor(yellow);
-			cY.setColor(yellow);
-			cZ.setColor(yellow);
 			cX.setLocked(true);
 			cY.setLocked(true);
 			cZ.setLocked(true);
