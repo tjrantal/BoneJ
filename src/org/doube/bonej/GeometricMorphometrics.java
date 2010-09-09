@@ -32,6 +32,7 @@ import java.util.ArrayList;
 
 import javax.media.j3d.View;
 import javax.vecmath.Color3f;
+import javax.vecmath.Point3d;
 
 import org.doube.bonej.geomorph.Crosshairs;
 import org.doube.bonej.geomorph.Landmark;
@@ -106,17 +107,19 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 			IJ.error("Multi-slice stack expected");
 			return;
 		}
+		cal = imp.getCalibration();
 
 		orthoViewer = Orthogonal_Views.getInstance();
 		if (orthoViewer == null) {
 			new Orthogonal_Views().run("");
 			orthoViewer = Orthogonal_Views.getInstance();
 		}
-
+		int[] c = orthoViewer.getCrossLoc();
 		univ = new Image3DUniverse();
 		show3DVolume();
 		show3DOrtho();
-		hide3DOrtho();
+		crossHairs = new Crosshairs(c[0] * cal.pixelWidth, c[1]
+				* cal.pixelHeight, c[2] * cal.pixelDepth, univ);
 		univ.show();
 		canvas = imp.getCanvas();
 		xz_imp = orthoViewer.getXZImage();
@@ -133,10 +136,6 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		pld.addPointList("Landmarks", plPanel);
 		addListeners();
 		landmarks = new ArrayList<Landmark>();
-		int[] c = orthoViewer.getCrossLoc();
-		cal = imp.getCalibration();
-		crossHairs = new Crosshairs(c[0] * cal.pixelWidth, c[1]
-				* cal.pixelHeight, c[2] * cal.pixelDepth, univ);
 	}
 
 	private void addListeners() {
@@ -254,6 +253,12 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		int y3 = ortho3D.getSlice(AxisConstants.Y_AXIS);
 		int z3 = ortho3D.getSlice(AxisConstants.Z_AXIS);
 
+		// get the 3D Crosshairs' state
+		Point3d crossPos = crossHairs.get();
+		int x4 = (int) (crossPos.x / cal.pixelWidth);
+		int y4 = (int) (crossPos.y / cal.pixelHeight);
+		int z4 = (int) (crossPos.z / cal.pixelDepth);
+
 		// if the change was in the 2D viewer, update the 3D viewer
 		// 2D viewer state must always exactly match (x, y, z)
 		// but 3D viewer can be sloppy
@@ -264,15 +269,13 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 			if (x < x3 * resampling || x >= (x3 + 1) * resampling
 					|| y < y3 * resampling || y >= (y3 + 1) * resampling
 					|| z < z3 * resampling || z >= (z3 + 1) * resampling) {
-				update(); // update the crosshairs in separate thread
-				ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
-				ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
-				ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling);
+				updateCrosshairs(); // update the crosshairs in separate thread
+				updateOrtho3D();
 			}
 			return;
 		}
 
-		// if the change was in the 3D viewer, update the 2D viewer
+		// if the change was in the 3D ortho viewer, update the 2D viewer
 		// 3D viewer state has tolerance to not exactly match (x, y, z) due to
 		// resampling
 		if (x3 * resampling > x || (x3 + 1) * resampling <= x
@@ -282,9 +285,27 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 			y = y3 * resampling;
 			z = z3 * resampling;
 			orthoViewer.setCrossLoc(x, y, z);
+			updateCrosshairs();
+			return;
+		}
+
+		// Update the 2D orthoviewer with changes to the 2D crosshairs
+		if (x4 > x || x4 + 1 <= x || y4 > y || y4 + 1 <= y || z4 > z
+				|| z4 + 1 <= z) {
+			x = x4;
+			y = y4;
+			z = z4;
+			orthoViewer.setCrossLoc(x, y, z);
+			updateOrtho3D();
 			return;
 		}
 		return;
+	}
+
+	private void updateOrtho3D() {
+		ortho3D.setSlice(AxisConstants.X_AXIS, x / resampling);
+		ortho3D.setSlice(AxisConstants.Y_AXIS, y / resampling);
+		ortho3D.setSlice(AxisConstants.Z_AXIS, z / resampling);
 	}
 
 	/**
@@ -474,7 +495,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 	 * Refresh the output windows. This is done by sending a signal to the
 	 * Updater() thread.
 	 */
-	void update() {
+	void updateCrosshairs() {
 		if (updater != null)
 			updater.doUpdate();
 	}
