@@ -108,6 +108,10 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		this.y = y;
 		this.z = z;
 	}
+	
+	public Point3d get(){
+		return new Point3d(x, y, z);
+	}
 
 	public void update() {
 
