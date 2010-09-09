@@ -194,7 +194,15 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void contentSelected(Content c) {
-		
+		Color3f red = new Color3f(1.0f, 0.0f, 0.0f);
+		if (c.equals(cX))
+			cX.setColor(red);
+		else if (c.equals(cY))
+			cY.setColor(red);
+		else if (c.equals(cZ))
+			cZ.setColor(red);
+		else
+			return;
 	}
 
 	@Override
@@ -235,6 +243,13 @@ public class Crosshairs implements UniverseListener, KeyListener {
 	public void keyReleased(KeyEvent e) {
 		// prevent rotation
 		if (e.getKeyCode() == 16) {
+			Color3f yellow = new Color3f(1.0f, 1.0f, 0.0f);
+			cX.setSelected(false);
+			cY.setSelected(false);
+			cZ.setSelected(false);
+			cX.setColor(yellow);
+			cY.setColor(yellow);
+			cZ.setColor(yellow);
 			cX.setLocked(true);
 			cY.setLocked(true);
 			cZ.setLocked(true);
