@@ -227,18 +227,15 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void transformationFinished(View view) {
-//		IJ.log("Transformation finished");
 		update();
 	}
 
 	@Override
 	public void transformationStarted(View view) {
-		IJ.log("Transformation started");
 	}
 
 	@Override
 	public void transformationUpdated(View view) {
-		IJ.log("Transformation updated");
 		try {
 			if (univ.getSelected().equals(cX)) {
 				tg = cX.getLocalTranslate();
@@ -246,21 +243,18 @@ public class Crosshairs implements UniverseListener, KeyListener {
 				t1.get(vector);
 				y += vector.y;
 				z += vector.z;
-				IJ.log("y is at " + y + " and z is at " + z);
 			} else if (univ.getSelected().equals(cY)) {
 				tg = cY.getLocalTranslate();
 				tg.getTransform(t1);
 				t1.get(vector);
 				x += vector.x;
 				z += vector.z;
-				IJ.log("z is at " + z + " and x is at " + x);
 			} else if (univ.getSelected().equals(cZ)) {
 				tg = cZ.getLocalTranslate();
 				tg.getTransform(t1);
 				t1.get(vector);
 				x += vector.x;
 				y += vector.y;
-				IJ.log("y is at " + y + " and x is at " + x);
 			}
 			update();
 		} catch (Exception e) {
