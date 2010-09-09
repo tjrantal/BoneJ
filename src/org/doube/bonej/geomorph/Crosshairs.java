@@ -10,6 +10,7 @@ import javax.media.j3d.View;
 import javax.vecmath.Color3f;
 import javax.vecmath.Point3d;
 import javax.vecmath.Point3f;
+import javax.vecmath.Vector3d;
 
 import customnode.CustomLineMesh;
 
@@ -29,6 +30,9 @@ public class Crosshairs implements UniverseListener, KeyListener {
 	private double x, y, z;
 	private CustomLineMesh clmX, clmY, clmZ;
 	private Content cX, cY, cZ;
+	private TransformGroup tg = new TransformGroup();
+	private Transform3D t1 = new Transform3D();
+	private Vector3d vector = new Vector3d();
 
 	public Crosshairs(double x, double y, double z, Image3DUniverse univ) {
 		this.x = x;
@@ -98,6 +102,8 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		} catch (NullPointerException npe) {
 			IJ.log("3D Viewer was closed before rendering completed.");
 			return;
+		} catch (Exception e){
+			IJ.log(e.getMessage());
 		}
 		univ.addUniverseListener(this);
 		univ.getCanvas().addKeyListener(this);
@@ -108,8 +114,8 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		this.y = y;
 		this.z = z;
 	}
-	
-	public Point3d get(){
+
+	public Point3d get() {
 		return new Point3d(x, y, z);
 	}
 
@@ -157,11 +163,11 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		clmY.setCoordinate(1, end2);
 		clmX.setCoordinate(0, start3);
 		clmX.setCoordinate(1, end3);
-		
+
 		cX.setTransform(emptyTransform);
 		cY.setTransform(emptyTransform);
 		cZ.setTransform(emptyTransform);
-		
+
 	}
 
 	public void show() {
@@ -182,7 +188,7 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		cY.setColor(yellow);
 		cZ.setColor(yellow);
 	}
-	
+
 	@Override
 	public void canvasResized() {
 		// TODO Auto-generated method stub
@@ -197,7 +203,6 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void contentChanged(Content c) {
-		IJ.log("Content changed: " + c.getName());
 	}
 
 	@Override
@@ -222,7 +227,8 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void transformationFinished(View view) {
-		IJ.log("Transformation finished");
+//		IJ.log("Transformation finished");
+		update();
 	}
 
 	@Override
@@ -233,6 +239,34 @@ public class Crosshairs implements UniverseListener, KeyListener {
 	@Override
 	public void transformationUpdated(View view) {
 		IJ.log("Transformation updated");
+		try {
+			if (univ.getSelected().equals(cX)) {
+				tg = cX.getLocalTranslate();
+				tg.getTransform(t1);
+				t1.get(vector);
+				y += vector.y;
+				z += vector.z;
+				IJ.log("y is at " + y + " and z is at " + z);
+			} else if (univ.getSelected().equals(cY)) {
+				tg = cY.getLocalTranslate();
+				tg.getTransform(t1);
+				t1.get(vector);
+				x += vector.x;
+				z += vector.z;
+				IJ.log("z is at " + z + " and x is at " + x);
+			} else if (univ.getSelected().equals(cZ)) {
+				tg = cZ.getLocalTranslate();
+				tg.getTransform(t1);
+				t1.get(vector);
+				x += vector.x;
+				y += vector.y;
+				IJ.log("y is at " + y + " and x is at " + x);
+			}
+			update();
+		} catch (Exception e) {
+			IJ.log(e.getMessage());
+		}
+
 	}
 
 	@Override
