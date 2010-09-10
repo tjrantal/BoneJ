@@ -118,6 +118,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		univ = new Image3DUniverse();
 		show3DVolume();
 		show3DOrtho();
+		hide3DOrtho();
 		crossHairs = new Crosshairs(c[0] * cal.pixelWidth, c[1]
 				* cal.pixelHeight, c[2] * cal.pixelDepth, univ);
 		univ.show();
@@ -188,6 +189,7 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 			}
 		} else
 			c.setVisible(true);
+		updateOrtho3D();
 	}
 
 	private void hide3DOrtho() {
