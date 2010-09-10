@@ -461,13 +461,10 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 
 	@Override
 	public void added(BenesNamedPoint p) {
-		// TODO Auto-generated method stub
 	}
 
 	@Override
 	public void highlighted(BenesNamedPoint p) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -477,20 +474,14 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 
 	@Override
 	public void removed(BenesNamedPoint p) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void renamed(BenesNamedPoint p) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
 	public void reordered() {
-		// TODO Auto-generated method stub
-
 	}
 
 	/**
@@ -562,5 +553,4 @@ public class GeometricMorphometrics implements PlugIn, UniverseListener,
 		}
 
 	} // Updater class
-
 }
