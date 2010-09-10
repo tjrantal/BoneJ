@@ -33,6 +33,7 @@ public class Crosshairs implements UniverseListener, KeyListener {
 	private TransformGroup tg = new TransformGroup();
 	private Transform3D t1 = new Transform3D();
 	private Vector3d vector = new Vector3d();
+	Point3d globalMax, globalMin;
 
 	public Crosshairs(double x, double y, double z, Image3DUniverse univ) {
 		this.x = x;
@@ -43,10 +44,10 @@ public class Crosshairs implements UniverseListener, KeyListener {
 	}
 
 	private void create() {
-		Point3d globalMax = new Point3d();
+		globalMax = new Point3d();
 		univ.getGlobalMaxPoint(globalMax);
 
-		Point3d globalMin = new Point3d();
+		globalMin = new Point3d();
 		univ.getGlobalMinPoint(globalMin);
 
 		ArrayList<Point3f> meshZ = new ArrayList<Point3f>();
@@ -102,7 +103,7 @@ public class Crosshairs implements UniverseListener, KeyListener {
 		} catch (NullPointerException npe) {
 			IJ.log("3D Viewer was closed before rendering completed.");
 			return;
-		} catch (Exception e){
+		} catch (Exception e) {
 			IJ.log(e.getMessage());
 		}
 		univ.addUniverseListener(this);
@@ -121,11 +122,18 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	public void update() {
 
-		Point3d globalMax = new Point3d();
-		univ.getGlobalMaxPoint(globalMax);
-
-		Point3d globalMin = new Point3d();
-		univ.getGlobalMinPoint(globalMin);
+		if (x < globalMin.x)
+			x = globalMin.x;
+		if (x > globalMax.x)
+			x = globalMax.x;
+		if (y < globalMin.y)
+			y = globalMin.y;
+		if (y > globalMax.y)
+			y = globalMax.y;
+		if (z < globalMin.z)
+			z = globalMin.z;
+		if (z > globalMax.z)
+			z = globalMax.z;
 
 		Point3f start1 = new Point3f();
 		start1.x = (float) x;
@@ -232,6 +240,8 @@ public class Crosshairs implements UniverseListener, KeyListener {
 
 	@Override
 	public void transformationStarted(View view) {
+		univ.getGlobalMaxPoint(globalMax);
+		univ.getGlobalMinPoint(globalMin);
 	}
 
 	@Override
