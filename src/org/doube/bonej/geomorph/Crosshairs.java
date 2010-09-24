@@ -33,7 +33,7 @@ public class Crosshairs implements UniverseListener, KeyListener {
 	private TransformGroup tg = new TransformGroup();
 	private Transform3D t1 = new Transform3D();
 	private Vector3d vector = new Vector3d();
-	Point3d globalMax, globalMin;
+	private Point3d globalMax, globalMin;
 
 	public Crosshairs(double x, double y, double z, Image3DUniverse univ) {
 		this.x = x;
