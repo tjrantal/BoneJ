@@ -223,14 +223,25 @@ public class Crosshairs implements UniverseListener, KeyListener {
 	public void contentSelected(Content c) {
 		resetColor();
 		Color3f red = new Color3f(1.0f, 0.0f, 0.0f);
-		if (c.equals(cX))
-			cX.setColor(red);
-		else if (c.equals(cY))
-			cY.setColor(red);
-		else if (c.equals(cZ))
-			cZ.setColor(red);
-		else
-			return;
+		try {
+			if (c.equals(cX)) {
+				cX.setColor(red);
+				univ.setShowBoundingBoxUponSelection(false);
+			} else if (c.equals(cY)) {
+				cY.setColor(red);
+				univ.setShowBoundingBoxUponSelection(false);
+			} else if (c.equals(cZ)) {
+				cZ.setColor(red);
+				univ.setShowBoundingBoxUponSelection(false);
+			} else {
+				univ.setShowBoundingBoxUponSelection(true);
+				return;
+			}
+		} catch (Exception e) {
+			IJ.log("Please update your 3D Viewer to" +
+					" at least 22.09.2010 version");
+			IJ.log(e.getMessage());
+		}
 	}
 
 	@Override
