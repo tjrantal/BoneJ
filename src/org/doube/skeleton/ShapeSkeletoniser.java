@@ -55,8 +55,8 @@ public class ShapeSkeletoniser implements PlugIn {
 			IJ.error("Shape Skeletoniser requires a binary image.");
 			return;
 		}
-		ImagePlus outImp = shapeSkeletonize(imp);
-		outImp.show();
+		ImagePlus skeleton = shapeSkeletonize(imp);
+		skeleton.show();
 	}
 
 	/**
@@ -72,21 +72,22 @@ public class ShapeSkeletoniser implements PlugIn {
 		ImageStack stack = imp.getImageStack();
 		byte[][] deletionArray = initialiseEmptyArray(imp);
 		byte[][] markerArray = initialiseEmptyArray(imp);
-		//set up the deletion counters so we can enter the while loop
+		// set up the deletion counters so we can enter the while loop
 		long[] deletionCount;
 		deletionCount = new long[stack.getSize()];
 		Arrays.fill(deletionCount, 1);
-		while (countDeleted(deletionCount) > 0){
+		while (countDeleted(deletionCount) > 0) {
 			scan1(stack, markerArray, deletionArray, deletionCount);
 			scan2(stack, markerArray, deletionArray, deletionCount);
+			scan3(stack, markerArray, deletionArray, deletionCount);
 		}
-		
-		return imp;
+		ImagePlus skeleton = new ImagePlus("Skeleton", stack);
+		return skeleton;
 	}
 
 	private long countDeleted(long[] deletionCount2) {
 		long count = 0;
-		for (int i = 0 ; i < deletionCount2.length; i++)
+		for (int i = 0; i < deletionCount2.length; i++)
 			count += deletionCount2[i];
 		return count;
 	}
@@ -97,7 +98,7 @@ public class ShapeSkeletoniser implements PlugIn {
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
 		for (int z = 0; z < d; z++) {
-			deletionCount[z] = 0; //reset the counters
+			deletionCount[z] = 0; // reset the counters
 			for (int y = 0; y < h; y++) {
 				final int index = y * w;
 				for (int x = 0; x < w; x++) {
@@ -112,8 +113,8 @@ public class ShapeSkeletoniser implements PlugIn {
 					if (isShapePoint(neighbours, stack, x, y, z, w, h, d))
 						markerArray[z][index + x]++;
 					else {
-						//is not a shape point and is a simple point: delete
-						if (isSimplePoint(neighbours)){
+						// is not a shape point and is a simple point: delete
+						if (isSimplePoint(neighbours)) {
 							deletionArray[z][index + x] = (byte) 255;
 							deletionCount[z]++;
 						}
@@ -123,22 +124,22 @@ public class ShapeSkeletoniser implements PlugIn {
 		}
 		deleteDeletable(stack, deletionArray, w, h, d);
 	}
-	
+
 	private void scan2(ImageStack stack, byte[][] markerArray,
 			byte[][] deletionArray, long[] deletionCount) {
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
 		for (int z = 0; z < d; z++) {
-			for (int y = 0; y < h; y++){
+			for (int y = 0; y < h; y++) {
 				final int index = y * w;
-				for (int x = 0; x < w; x++){
+				for (int x = 0; x < w; x++) {
 					if (markerArray[z][index + x] > 0)
 						continue;
 					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
 					if (!isEOpen(neighbours, stack, x, y, z, w, h, d))
 						continue;
-					if (isSimplePoint(neighbours) && condition3(neighbours)){
+					if (isSimplePoint(neighbours) && condition3(neighbours)) {
 						deletionArray[z][index + x] = (byte) 255;
 						deletionCount[z]++;
 					}
@@ -148,12 +149,36 @@ public class ShapeSkeletoniser implements PlugIn {
 		deleteDeletable(stack, deletionArray, w, h, d);
 	}
 
-	private void deleteDeletable(ImageStack stack, byte[][] deletionArray,
-			int w, int h, int d){
-		for (int z = 0; z < d; z++){
-			for (int y = 0; y < h; y++){
+	private void scan3(ImageStack stack, byte[][] markerArray,
+			byte[][] deletionArray, long[] deletionCount) {
+		final int w = stack.getWidth();
+		final int h = stack.getHeight();
+		final int d = stack.getSize();
+		for (int z = 0; z < d; z++) {
+			for (int y = 0; y < h; y++) {
 				final int index = y * w;
-				for (int x = 0; x < w; x++){
+				for (int x = 0; x < w; x++) {
+					if (markerArray[z][index + x] > 0)
+						continue;
+					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
+					if (isVOpen(neighbours, stack, x, y, z, w, h, d)) {
+						if (isSimplePoint(neighbours)) {
+							deletionArray[z][index + x] = (byte) 255;
+							deletionCount[z]++;
+						}
+					}
+				}
+			}
+		}
+		deleteDeletable(stack, deletionArray, w, h, d);
+	}
+
+	private void deleteDeletable(ImageStack stack, byte[][] deletionArray,
+			int w, int h, int d) {
+		for (int z = 0; z < d; z++) {
+			for (int y = 0; y < h; y++) {
+				final int index = y * w;
+				for (int x = 0; x < w; x++) {
 					if (deletionArray[z][index + x] > 0)
 						setPixel(stack, x, y, z, w, h, index, (byte) 0);
 				}
@@ -161,8 +186,7 @@ public class ShapeSkeletoniser implements PlugIn {
 			Arrays.fill(deletionArray[z], (byte) 0);
 		}
 	}
-	
-	
+
 	/**
 	 * Create work array, in which the voxels to be removed will be registered
 	 * 
@@ -181,46 +205,6 @@ public class ShapeSkeletoniser implements PlugIn {
 			Arrays.fill(workArray[z], (byte) 0);
 		}
 		return workArray;
-	}
-
-	/**
-	 * Determine if a point (x, y, z) in the work array is marked
-	 * 
-	 * @param workArray
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @param w
-	 * @param h
-	 * @param d
-	 * @return true if the point is marked
-	 */
-	private boolean isMarked(short[][] workArray, int x, int y, int z, int w,
-			int h, int d) {
-		if (workArray[z][y * w + x] > 0)
-			return true;
-		else
-			return false;
-	}
-
-	/**
-	 * Determine if a voxel is black (true) or white (false)
-	 * 
-	 * @param workArray
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @param w
-	 * @param h
-	 * @param d
-	 * @return
-	 */
-	private boolean isBlack(short[][] workArray, int x, int y, int z, int w,
-			int h, int d) {
-		if (workArray[z][y * w + x] >= 0)
-			return true;
-		else
-			return false;
 	}
 
 	/**
@@ -390,7 +374,6 @@ public class ShapeSkeletoniser implements PlugIn {
 	 *            from Ignacio's getNeighborhood() method
 	 * @return
 	 */
-	@SuppressWarnings("unused")
 	private boolean isSimplePoint(byte[] neighbours) {
 
 		// Condition 2. check 6 neighbourhood for white pixels
@@ -1301,19 +1284,24 @@ public class ShapeSkeletoniser implements PlugIn {
 		else
 			return 0;
 	} /* end getPixel */
-	
+
 	/**
-	 * Set pixel in 3D image 
+	 * Set pixel in 3D image
 	 * 
-	 * @param image 3D image
-	 * @param x x- coordinate
-	 * @param y y- coordinate
-	 * @param z z- coordinate (in image stacks the indexes start at 1)
-	 * @param value pixel value
+	 * @param image
+	 *            3D image
+	 * @param x
+	 *            x- coordinate
+	 * @param y
+	 *            y- coordinate
+	 * @param z
+	 *            z- coordinate (in image stacks the indexes start at 1)
+	 * @param value
+	 *            pixel value
 	 */
-	private void setPixel(ImageStack image, int x, int y, int z, int w, int h, int d, byte value)
-	{
-		if(x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d)
+	private void setPixel(ImageStack image, int x, int y, int z, int w, int h,
+			int d, byte value) {
+		if (x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d)
 			((byte[]) image.getPixels(z + 1))[x + y * w] = value;
 	}
 
@@ -1339,7 +1327,7 @@ public class ShapeSkeletoniser implements PlugIn {
 	private byte[] getNeighborhood(ImageStack image, int x, int y, int z,
 			int w, int h, int d) {
 		byte[] neighborhood = new byte[27];
-		z++; //handle 0 indices
+		z++; // handle 0 indices
 		neighborhood[0] = getPixel(image, x - 1, y - 1, z - 1, w, h, d);
 		neighborhood[1] = getPixel(image, x, y - 1, z - 1, w, h, d);
 		neighborhood[2] = getPixel(image, x + 1, y - 1, z - 1, w, h, d);
