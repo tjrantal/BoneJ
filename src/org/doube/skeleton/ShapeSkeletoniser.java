@@ -868,7 +868,7 @@ public class ShapeSkeletoniser implements PlugIn {
 
 	/**
 	 * Check whether Condition 4 is satisfied.
-	 *   
+	 * 
 	 * @param neighbours
 	 * @param stack
 	 * @param x
@@ -881,32 +881,126 @@ public class ShapeSkeletoniser implements PlugIn {
 	 */
 	private boolean condition4(byte[] neighbours, ImageStack stack, int x,
 			int y, int z, int w, int h, int d) {
-		byte[] fPoints = getF1SPoints(stack, x, y, z, w, h, d);
-		if (neighbours[4] == WHITE && fPoints[22] == WHITE
-				&& neighbours[10] == BLACK && neighbours[12] == BLACK
-				&& neighbours[22] == BLACK){
-			
+		byte[] f1Points = getF1SPoints(stack, x, y, z, w, h, d);
+		for (int i = 0; i < 3; i++) {
+			if (!isThick(neighbours, f1Points, i))
+				return false;
 		}
-		else return false;
-		if (neighbours[10] == WHITE && fPoints[16] == WHITE
-				&& neighbours[12] == BLACK && neighbours[16] == BLACK
-				&& neighbours[22] == BLACK){
-			
+		for (int i = 1; i < 3; i++) {
+			if (midPlaneHasTunnel(neighbours, i)
+					|| !single26Component(neighbours, i))
+				return false;
 		}
-			
-		else return false;
-		if (neighbours[12] == WHITE && fPoints[14] == WHITE
-				&& neighbours[10] == BLACK && neighbours[14] == BLACK
-				&& neighbours[22] == BLACK){
-			
-		}
-		else return false;
+		return true;
+	}
 
-		if (midPlaneHasTunnel(neighbours, 1) || !single26Component(neighbours, 1))
+	/**
+	 * Check whether condition 5 is satisfied
+	 * 
+	 * @param neighbours
+	 * @param stack
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param w
+	 * @param h
+	 * @param d
+	 * @return
+	 */
+	private boolean condition5(byte[] neighbours, ImageStack stack, int x,
+			int y, int z, int w, int h, int d) {
+		byte[] f1Points = getF1SPoints(stack, x, y, z, w, h, d);
+
+		if (!isThick(neighbours, f1Points, 0)
+				|| !isThick(neighbours, f1Points, 1))
 			return false;
-		if (midPlaneHasTunnel(neighbours, 2) || !single26Component(neighbours, 2))
+		if (!isThick(neighbours, f1Points, 0)
+				|| !isThick(neighbours, f1Points, 2))
+			return false;
+		if (!isThick(neighbours, f1Points, 1)
+				|| !isThick(neighbours, f1Points, 2))
+			return false;
+
+		if (midPlaneHasTunnel(neighbours, 2)
+				|| !single26Component(neighbours, 2))
 			return false;
 		return true;
+	}
+
+	
+	/**
+	 * Check whether condition 6 is satisfied
+	 * 
+	 * @param neighbours
+	 * @param stack
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param w
+	 * @param h
+	 * @param d
+	 * @return
+	 */
+	private boolean condition6(byte[] neighbours, ImageStack stack, int x,
+			int y, int z, int w, int h, int d) {
+		byte[] f1Points = getF1SPoints(stack, x, y, z, w, h, d);
+		if (!isThick(neighbours, f1Points, 0)
+				|| !isThick(neighbours, f1Points, 1)
+				|| !isThick(neighbours, f1Points, 2))
+			return false;
+		return true;
+	}
+
+	/**
+	 * Determine whether a point satisifies definition 5, in the specified
+	 * direction. This is thick(a, d, p) according to Saha.
+	 * 
+	 * @param neighbours
+	 * @param f1Points
+	 * @param p
+	 *            0 = z axis, 1 = y axis, 2 = x axis
+	 * @return
+	 */
+	private boolean isThick(byte[] neighbours, byte[] f1Points, int p) {
+		switch (p) {
+		case 0:
+			return (neighbours[4] == WHITE && f1Points[22] == WHITE
+					&& neighbours[10] == BLACK && neighbours[12] == BLACK && neighbours[22] == BLACK);
+		case 1:
+			return (neighbours[10] == WHITE && f1Points[16] == WHITE
+					&& neighbours[12] == BLACK && neighbours[16] == BLACK && neighbours[22] == BLACK);
+		case 2:
+			return (neighbours[12] == WHITE && f1Points[14] == WHITE
+					&& neighbours[10] == BLACK && neighbours[14] == BLACK && neighbours[22] == BLACK);
+		default:
+			throw new IllegalArgumentException();
+		}
+	}
+
+	/**
+	 * Determine if the point at (x,y,z) is erodable.
+	 * 
+	 * @param neighbours
+	 * @param stack
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param w
+	 * @param h
+	 * @param d
+	 * @return
+	 */
+	private boolean isErodable(byte[] neighbours, ImageStack stack, int x,
+			int y, int z, int w, int h, int d) {
+		if (!isSimplePoint(neighbours))
+			return false;
+		if (condition4(neighbours, stack, x, y, z, w, h, d))
+			return true;
+		if (condition5(neighbours, stack, x, y, z, w, h, d))
+			return true;
+		if (condition6(neighbours, stack, x, y, z, w, h, d))
+			return true;
+		return false;
 	}
 
 	/**
