@@ -18,6 +18,9 @@ package org.doube.skeleton;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import java.util.Arrays;
+
+import org.doube.bonej.Moments;
 import org.doube.util.ImageCheck;
 
 import ij.IJ;
@@ -66,61 +69,91 @@ public class ShapeSkeletoniser implements PlugIn {
 		ImageCheck ic = new ImageCheck();
 		if (!ic.isBinary(imp))
 			throw new IllegalArgumentException();
-		final int w = imp.getWidth();
-		final int h = imp.getHeight();
-		final int d = imp.getImageStackSize();
-		short[][] workArray = initialiseWorkArray(imp);
-		short threshold = Short.MIN_VALUE + 1;
-		long nDeletable = Long.MAX_VALUE;
-		short iteration = 1;
+		ImageStack stack = imp.getImageStack();
+		byte[][] deletionArray = initialiseEmptyArray(imp);
+		byte[][] markerArray = initialiseEmptyArray(imp);
+		//set up the deletion counters so we can enter the while loop
+		long[] deletionCount;
+		deletionCount = new long[stack.getSize()];
+		Arrays.fill(deletionCount, 1);
+		while (countDeleted(deletionCount) > 0){
+			scan1(stack, markerArray, deletionArray, deletionCount);
+		}
+		
+		return imp;
+	}
 
-		// "scan" until there are no more deletable voxels
-		// scan means go through all voxels in volume
-		// iterate means traverse all surface points in a topological way and
-		// may require multiple scans
-		while (nDeletable > 0) {
-			long dc = 0;
-			for (int z = 0; z < d; z++) {
-				for (int y = 0; y < h; y++) {
-					final int yw = y * w;
-					for (int x = 0; x < w; x++) {
-						if (isDeletable(workArray, threshold, x, y, z, w, h, d)) {
-							workArray[z][yw + x] = threshold;
-							dc++;
+	private long countDeleted(long[] deletionCount2) {
+		long count = 0;
+		for (int i = 0 ; i < deletionCount2.length; i++)
+			count += deletionCount2[i];
+		return count;
+	}
+
+	private void scan1(ImageStack stack, byte[][] markerArray,
+			byte[][] deletionArray, long[] deletionCount) {
+		final int w = stack.getWidth();
+		final int h = stack.getHeight();
+		final int d = stack.getSize();
+		for (int z = 0; z < d; z++) {
+			deletionCount[z] = 0; //reset the counters
+			for (int y = 0; y < h; y++) {
+				final int index = y * w;
+				for (int x = 0; x < w; x++) {
+					// "during the first scan the set of unmarked s-open points is used for erosion"
+					if (markerArray[z][index + x] > 0)
+						continue;
+					// is unmarked
+					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
+					if (!isSOpen(neighbours))
+						continue;
+					// is s-open and a shape point: mark
+					if (isShapePoint(neighbours, stack, x, y, z, w, h, d))
+						markerArray[z][index + x]++;
+					else {
+						//is not a shape point and is a simple point: delete
+						if (isSimplePoint(neighbours)){
+							deletionArray[z][index + x] = (byte) 255;
+							deletionCount[z]++;
 						}
 					}
 				}
 			}
-			iteration++;
-			threshold++;
-			nDeletable = dc;
 		}
-		return imp;
+		deleteDeletable(stack, deletionArray, w, h, d);
 	}
 
+	private void deleteDeletable(ImageStack stack, byte[][] deletionArray,
+			int w, int h, int d){
+		for (int z = 0; z < d; z++){
+			for (int y = 0; y < h; y++){
+				final int index = y * w;
+				for (int x = 0; x < w; x++){
+					if (deletionArray[z][index + x] > 0)
+						setPixel(stack, x, y, z, w, h, index, (byte) 0);
+				}
+			}
+			Arrays.fill(deletionArray[z], (byte) 0);
+		}
+	}
+	
+	
 	/**
-	 * Create work array, converting original white values to large negative
-	 * number and black values to 0
+	 * Create work array, in which the voxels to be removed will be registered
 	 * 
 	 * @param imp
-	 * @return
+	 * @return array containing voxels for keeping (0) or deletion (255)
 	 */
-	private short[][] initialiseWorkArray(ImagePlus imp) {
+	private byte[][] initialiseEmptyArray(ImagePlus imp) {
 		ImageStack stack = imp.getImageStack();
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
 		final int wh = w * h;
-		short[][] workArray = new short[d][wh];
+		byte[][] workArray = new byte[d][wh];
 		for (int z = 0; z < d; z++) {
-			byte[] pixels = (byte[]) stack.getPixels(z + 1);
-			for (int i = 0; i < wh; i++) {
-				if (pixels[i] == WHITE) {
-					workArray[z][i] = Short.MIN_VALUE;
-				} else {
-					workArray[z][i] = 0;
-				}
-			}
+			workArray[z] = (byte[]) Moments.getEmptyPixels(w, h, 8);
+			Arrays.fill(workArray[z], (byte) 0);
 		}
 		return workArray;
 	}
@@ -163,23 +196,6 @@ public class ShapeSkeletoniser implements PlugIn {
 			return true;
 		else
 			return false;
-	}
-
-	/**
-	 * Determine if the point at (x, y, z) in the work array is deletable
-	 * 
-	 * @param workArray
-	 * @param x
-	 * @param y
-	 * @param z
-	 * @param w
-	 * @param h
-	 * @param d
-	 * @return
-	 */
-	private boolean isDeletable(short[][] workArray, long threshold, int x,
-			int y, int z, int w, int h, int d) {
-		return false;
 	}
 
 	/**
@@ -927,7 +943,6 @@ public class ShapeSkeletoniser implements PlugIn {
 		return true;
 	}
 
-	
 	/**
 	 * Check whether condition 6 is satisfied
 	 * 
@@ -1261,6 +1276,21 @@ public class ShapeSkeletoniser implements PlugIn {
 		else
 			return 0;
 	} /* end getPixel */
+	
+	/**
+	 * Set pixel in 3D image 
+	 * 
+	 * @param image 3D image
+	 * @param x x- coordinate
+	 * @param y y- coordinate
+	 * @param z z- coordinate (in image stacks the indexes start at 1)
+	 * @param value pixel value
+	 */
+	private void setPixel(ImageStack image, int x, int y, int z, int w, int h, int d, byte value)
+	{
+		if(x >= 0 && x < w && y >= 0 && y < h && z >= 0 && z < d)
+			((byte[]) image.getPixels(z + 1))[x + y * w] = value;
+	}
 
 	/**
 	 * Get neighborhood of a pixel in a 3D image (0 border conditions)
@@ -1272,7 +1302,7 @@ public class ShapeSkeletoniser implements PlugIn {
 	 * @param y
 	 *            y- coordinate
 	 * @param z
-	 *            z- coordinate (in image stacks the indexes start at 1)
+	 *            z- coordinate (starts at 0, not 1)
 	 * @param w
 	 *            image width
 	 * @param h
@@ -1284,7 +1314,7 @@ public class ShapeSkeletoniser implements PlugIn {
 	private byte[] getNeighborhood(ImageStack image, int x, int y, int z,
 			int w, int h, int d) {
 		byte[] neighborhood = new byte[27];
-
+		z++; //handle 0 indices
 		neighborhood[0] = getPixel(image, x - 1, y - 1, z - 1, w, h, d);
 		neighborhood[1] = getPixel(image, x, y - 1, z - 1, w, h, d);
 		neighborhood[2] = getPixel(image, x + 1, y - 1, z - 1, w, h, d);
