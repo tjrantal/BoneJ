@@ -867,6 +867,49 @@ public class ShapeSkeletoniser implements PlugIn {
 	}
 
 	/**
+	 * Check whether Condition 4 is satisfied.
+	 *   
+	 * @param neighbours
+	 * @param stack
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param w
+	 * @param h
+	 * @param d
+	 * @return
+	 */
+	private boolean condition4(byte[] neighbours, ImageStack stack, int x,
+			int y, int z, int w, int h, int d) {
+		byte[] fPoints = getF1SPoints(stack, x, y, z, w, h, d);
+		if (neighbours[4] == WHITE && fPoints[22] == WHITE
+				&& neighbours[10] == BLACK && neighbours[12] == BLACK
+				&& neighbours[22] == BLACK){
+			
+		}
+		else return false;
+		if (neighbours[10] == WHITE && fPoints[16] == WHITE
+				&& neighbours[12] == BLACK && neighbours[16] == BLACK
+				&& neighbours[22] == BLACK){
+			
+		}
+			
+		else return false;
+		if (neighbours[12] == WHITE && fPoints[14] == WHITE
+				&& neighbours[10] == BLACK && neighbours[14] == BLACK
+				&& neighbours[22] == BLACK){
+			
+		}
+		else return false;
+
+		if (midPlaneHasTunnel(neighbours, 1) || !single26Component(neighbours, 1))
+			return false;
+		if (midPlaneHasTunnel(neighbours, 2) || !single26Component(neighbours, 2))
+			return false;
+		return true;
+	}
+
+	/**
 	 * Determine whether the middle plane contains a single black 26-component
 	 * by boundary counting
 	 * 
