@@ -78,6 +78,7 @@ public class ShapeSkeletoniser implements PlugIn {
 		Arrays.fill(deletionCount, 1);
 		while (countDeleted(deletionCount) > 0){
 			scan1(stack, markerArray, deletionArray, deletionCount);
+			scan2(stack, markerArray, deletionArray, deletionCount);
 		}
 		
 		return imp;
@@ -116,6 +117,30 @@ public class ShapeSkeletoniser implements PlugIn {
 							deletionArray[z][index + x] = (byte) 255;
 							deletionCount[z]++;
 						}
+					}
+				}
+			}
+		}
+		deleteDeletable(stack, deletionArray, w, h, d);
+	}
+	
+	private void scan2(ImageStack stack, byte[][] markerArray,
+			byte[][] deletionArray, long[] deletionCount) {
+		final int w = stack.getWidth();
+		final int h = stack.getHeight();
+		final int d = stack.getSize();
+		for (int z = 0; z < d; z++) {
+			for (int y = 0; y < h; y++){
+				final int index = y * w;
+				for (int x = 0; x < w; x++){
+					if (markerArray[z][index + x] > 0)
+						continue;
+					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
+					if (!isEOpen(neighbours, stack, x, y, z, w, h, d))
+						continue;
+					if (isSimplePoint(neighbours) && condition3(neighbours)){
+						deletionArray[z][index + x] = (byte) 255;
+						deletionCount[z]++;
 					}
 				}
 			}
