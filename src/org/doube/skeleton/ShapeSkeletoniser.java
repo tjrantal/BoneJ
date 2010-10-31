@@ -43,9 +43,9 @@ import ij.plugin.PlugIn;
  */
 public class ShapeSkeletoniser implements PlugIn {
 
-	/** Foreground voxel value, called 'black' by Saha*/
+	/** Foreground voxel value, called 'black' by Saha */
 	private static final byte BLACK = (byte) 0;
-	/** Background voxel value, called 'white' by Saha*/
+	/** Background voxel value, called 'white' by Saha */
 	private static final byte WHITE = (byte) -1;
 
 	public void run(String arg) {
@@ -80,13 +80,12 @@ public class ShapeSkeletoniser implements PlugIn {
 		Arrays.fill(deletionCount, 1);
 		int iteration = 1;
 		while (countDeleted(deletionCount) > 0 && iteration < 100) {
-			IJ.showStatus("Iteration " + iteration);
+			IJ.showStatus("Iteration " + iteration + ", scan 1");
 			scan1(stack, markerArray, deletionArray, deletionCount);
-			IJ.log("Deleted after scan 1: " + countDeleted(deletionCount));
+			IJ.showStatus("Iteration " + iteration + ", scan 2");
 			scan2(stack, markerArray, deletionArray, deletionCount);
-			IJ.log("Deleted after scan 2: " + countDeleted(deletionCount));
+			IJ.showStatus("Iteration " + iteration + ", scan 3");
 			scan3(stack, markerArray, deletionArray, deletionCount);
-			IJ.log("Deleted after scan 3: " + countDeleted(deletionCount));
 			iteration++;
 		}
 		ImagePlus skeleton = new ImagePlus("Skeleton", stack);
@@ -97,7 +96,6 @@ public class ShapeSkeletoniser implements PlugIn {
 		long count = 0;
 		for (int i = 0; i < deletionCount2.length; i++)
 			count += deletionCount2[i];
-		IJ.log("Deleted " + count + " voxels");
 		return count;
 	}
 
@@ -111,7 +109,7 @@ public class ShapeSkeletoniser implements PlugIn {
 			for (int y = 0; y < h; y++) {
 				final int index = y * w;
 				for (int x = 0; x < w; x++) {
-//					IJ.log("Pixel at ("+x+", "+y+", "+z+") has value "+(byte) getPixel(stack, x, y, z, w, h, d));
+					// getPixel(stack, x, y, z, w, h, d));
 					if (getPixel(stack, x, y, z, w, h, d) == WHITE)
 						continue;
 					// "during the first scan the set of unmarked s-open points is used for erosion"
@@ -128,10 +126,8 @@ public class ShapeSkeletoniser implements PlugIn {
 					else {
 						// is not a shape point and is a simple point:
 						// delete
-						if (isSimplePoint(neighbours)) {
+						if (isSimplePoint(neighbours))
 							deletionArray[z][index + x] = Byte.MAX_VALUE;
-							deletionCount[z]++;
-						}
 					}
 				}
 			}
@@ -155,10 +151,8 @@ public class ShapeSkeletoniser implements PlugIn {
 					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
 					if (!isEOpen(neighbours, stack, x, y, z, w, h, d))
 						continue;
-					if (isSimplePoint(neighbours) && condition3(neighbours)) {
+					if (isSimplePoint(neighbours) && condition3(neighbours))
 						deletionArray[z][index + x] = Byte.MAX_VALUE;
-						deletionCount[z]++;
-					}
 				}
 			}
 		}
@@ -180,10 +174,8 @@ public class ShapeSkeletoniser implements PlugIn {
 						continue;
 					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
 					if (isVOpen(neighbours, stack, x, y, z, w, h, d)) {
-						if (isSimplePoint(neighbours)) {
+						if (isSimplePoint(neighbours))
 							deletionArray[z][index + x] = Byte.MAX_VALUE;
-							deletionCount[z]++;
-						}
 					}
 				}
 			}
@@ -197,14 +189,15 @@ public class ShapeSkeletoniser implements PlugIn {
 			for (int y = 0; y < h; y++) {
 				final int index = y * w;
 				for (int x = 0; x < w; x++) {
-					if (deletionArray[z][index + x] > 0) {
+					if (deletionArray[z][index + x] == Byte.MAX_VALUE) {
 						setPixel(stack, x, y, z, w, h, d, WHITE);
-						// deletionCount[z]++;
+						deletionCount[z]++;
+						deletionArray[z][index + x] = Byte.MIN_VALUE;
 					}
 				}
 			}
-			Arrays.fill(deletionArray[z], Byte.MIN_VALUE);
 		}
+		IJ.log("Deleted "+countDeleted(deletionCount));
 	}
 
 	/**
