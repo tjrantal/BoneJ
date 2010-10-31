@@ -44,9 +44,9 @@ import ij.plugin.PlugIn;
 public class ShapeSkeletoniser implements PlugIn {
 
 	/** Foreground voxel value, called 'black' by Saha */
-	private static final byte BLACK = (byte) 0;
+	private static final byte BLACK = (byte) -1;
 	/** Background voxel value, called 'white' by Saha */
-	private static final byte WHITE = (byte) -1;
+	private static final byte WHITE = (byte) 0;
 
 	public void run(String arg) {
 		if (!ImageCheck.checkEnvironment())
