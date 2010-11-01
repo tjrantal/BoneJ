@@ -19,9 +19,11 @@ package org.doube.skeleton;
  */
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.doube.bonej.Moments;
 import org.doube.util.ImageCheck;
+import org.doube.util.Multithreader;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -79,7 +81,7 @@ public class ShapeSkeletoniser implements PlugIn {
 		deletionCount = new long[stack.getSize()];
 		Arrays.fill(deletionCount, 1);
 		int iteration = 1;
-		while (countDeleted(deletionCount) > 0 && iteration < 100) {
+		while (countDeleted(deletionCount) > 0) {
 			IJ.showStatus("Iteration " + iteration + ", scan 1");
 			scan1(stack, markerArray, deletionArray, deletionCount);
 			IJ.showStatus("Iteration " + iteration + ", scan 2");
@@ -99,105 +101,154 @@ public class ShapeSkeletoniser implements PlugIn {
 		return count;
 	}
 
-	private void scan1(ImageStack stack, byte[][] markerArray,
-			byte[][] deletionArray, long[] deletionCount) {
+	private void scan1(final ImageStack stack, final byte[][] markerArray,
+			final byte[][] deletionArray, long[] deletionCount) {
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
 		Arrays.fill(deletionCount, 0);
-		for (int z = 0; z < d; z++) {
-			for (int y = 0; y < h; y++) {
-				final int index = y * w;
-				for (int x = 0; x < w; x++) {
-					// getPixel(stack, x, y, z, w, h, d));
-					if (getPixel(stack, x, y, z, w, h, d) == WHITE)
-						continue;
-					// "during the first scan the set of unmarked s-open points is used for erosion"
-					if (markerArray[z][index + x] > Byte.MIN_VALUE)
-						continue;
-					// is unmarked
-					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
+		final AtomicInteger ai = new AtomicInteger(0);
+		Thread[] threads = Multithreader.newThreads();
+		for (int thread = 0; thread < threads.length; thread++) {
+			threads[thread] = new Thread(new Runnable() {
+				public void run() {
+					for (int z = ai.getAndIncrement(); z < d; z = ai
+							.getAndIncrement()) {
+						for (int y = 0; y < h; y++) {
+							final int index = y * w;
+							for (int x = 0; x < w; x++) {
+								// getPixel(stack, x, y, z, w, h, d));
+								if (getPixel(stack, x, y, z, w, h, d) == WHITE)
+									continue;
+								// "during the first scan the set of unmarked s-open points is used for erosion"
+								if (markerArray[z][index + x] > Byte.MIN_VALUE)
+									continue;
+								// is unmarked
+								byte[] neighbours = getNeighborhood(stack, x,
+										y, z, w, h, d);
 
-					if (!isSOpen(neighbours))
-						continue;
-					// is s-open and a shape point: mark
-					if (isShapePoint(neighbours, stack, x, y, z, w, h, d))
-						markerArray[z][index + x]++;
-					else {
-						// is not a shape point and is a simple point:
-						// delete
-						if (isSimplePoint(neighbours))
-							deletionArray[z][index + x] = Byte.MAX_VALUE;
+								if (!isSOpen(neighbours))
+									continue;
+								// is s-open and a shape point: mark
+								if (isShapePoint(neighbours, stack, x, y, z, w,
+										h, d))
+									markerArray[z][index + x]++;
+								else {
+									// is not a shape point and is a simple
+									// point: delete
+									if (isSimplePoint(neighbours))
+										deletionArray[z][index + x] = Byte.MAX_VALUE;
+								}
+							}
+						}
 					}
 				}
-			}
+			});
 		}
-		deleteDeletable(stack, deletionArray, deletionCount, w, h, d);
+		Multithreader.startAndJoin(threads);
+		deleteDeletable(stack, deletionArray, deletionCount);
 	}
 
-	private void scan2(ImageStack stack, byte[][] markerArray,
-			byte[][] deletionArray, long[] deletionCount) {
+	private void scan2(final ImageStack stack, final byte[][] markerArray,
+			final byte[][] deletionArray, long[] deletionCount) {
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
-		for (int z = 0; z < d; z++) {
-			for (int y = 0; y < h; y++) {
-				final int index = y * w;
-				for (int x = 0; x < w; x++) {
-					if (getPixel(stack, x, y, z, w, h, d) == WHITE)
-						continue;
-					if (markerArray[z][index + x] > Byte.MIN_VALUE)
-						continue;
-					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
-					if (!isEOpen(neighbours, stack, x, y, z, w, h, d))
-						continue;
-					if (isSimplePoint(neighbours) && condition3(neighbours))
-						deletionArray[z][index + x] = Byte.MAX_VALUE;
+		final AtomicInteger ai = new AtomicInteger(0);
+		Thread[] threads = Multithreader.newThreads();
+		for (int thread = 0; thread < threads.length; thread++) {
+			threads[thread] = new Thread(new Runnable() {
+				public void run() {
+					for (int z = ai.getAndIncrement(); z < d; z = ai
+							.getAndIncrement()) {
+						for (int y = 0; y < h; y++) {
+							final int index = y * w;
+							for (int x = 0; x < w; x++) {
+								if (getPixel(stack, x, y, z, w, h, d) == WHITE)
+									continue;
+								if (markerArray[z][index + x] > Byte.MIN_VALUE)
+									continue;
+								byte[] neighbours = getNeighborhood(stack, x,
+										y, z, w, h, d);
+								if (!isEOpen(neighbours, stack, x, y, z, w, h,
+										d))
+									continue;
+								if (isSimplePoint(neighbours)
+										&& condition3(neighbours))
+									deletionArray[z][index + x] = Byte.MAX_VALUE;
+							}
+						}
+					}
 				}
-			}
+			});
 		}
-		deleteDeletable(stack, deletionArray, deletionCount, w, h, d);
+		Multithreader.startAndJoin(threads);
+		deleteDeletable(stack, deletionArray, deletionCount);
 	}
 
-	private void scan3(ImageStack stack, byte[][] markerArray,
-			byte[][] deletionArray, long[] deletionCount) {
+	private void scan3(final ImageStack stack, final byte[][] markerArray,
+			final byte[][] deletionArray, long[] deletionCount) {
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
-		for (int z = 0; z < d; z++) {
-			for (int y = 0; y < h; y++) {
-				final int index = y * w;
-				for (int x = 0; x < w; x++) {
-					if (getPixel(stack, x, y, z, w, h, d) == WHITE)
-						continue;
-					if (markerArray[z][index + x] > Byte.MIN_VALUE)
-						continue;
-					byte[] neighbours = getNeighborhood(stack, x, y, z, w, h, d);
-					if (isVOpen(neighbours, stack, x, y, z, w, h, d)) {
-						if (isSimplePoint(neighbours))
-							deletionArray[z][index + x] = Byte.MAX_VALUE;
+		final AtomicInteger ai = new AtomicInteger(0);
+		Thread[] threads = Multithreader.newThreads();
+		for (int thread = 0; thread < threads.length; thread++) {
+			threads[thread] = new Thread(new Runnable() {
+				public void run() {
+					for (int z = ai.getAndIncrement(); z < d; z = ai
+							.getAndIncrement()) {
+						for (int y = 0; y < h; y++) {
+							final int index = y * w;
+							for (int x = 0; x < w; x++) {
+								if (getPixel(stack, x, y, z, w, h, d) == WHITE)
+									continue;
+								if (markerArray[z][index + x] > Byte.MIN_VALUE)
+									continue;
+								byte[] neighbours = getNeighborhood(stack, x,
+										y, z, w, h, d);
+								if (isVOpen(neighbours, stack, x, y, z, w, h, d)) {
+									if (isSimplePoint(neighbours))
+										deletionArray[z][index + x] = Byte.MAX_VALUE;
+								}
+							}
+						}
 					}
 				}
-			}
+			});
 		}
-		deleteDeletable(stack, deletionArray, deletionCount, w, h, d);
+		Multithreader.startAndJoin(threads);
+		deleteDeletable(stack, deletionArray, deletionCount);
 	}
 
-	private void deleteDeletable(ImageStack stack, byte[][] deletionArray,
-			long[] deletionCount, int w, int h, int d) {
-		for (int z = 0; z < d; z++) {
-			for (int y = 0; y < h; y++) {
-				final int index = y * w;
-				for (int x = 0; x < w; x++) {
-					if (deletionArray[z][index + x] == Byte.MAX_VALUE) {
-						setPixel(stack, x, y, z, w, h, d, WHITE);
-						deletionCount[z]++;
-						deletionArray[z][index + x] = Byte.MIN_VALUE;
+	private void deleteDeletable(final ImageStack stack,
+			final byte[][] deletionArray, final long[] deletionCount) {
+		final int w = stack.getWidth();
+		final int h = stack.getHeight();
+		final int d = stack.getSize();
+		final AtomicInteger ai = new AtomicInteger(0);
+		Thread[] threads = Multithreader.newThreads();
+		for (int thread = 0; thread < threads.length; thread++) {
+			threads[thread] = new Thread(new Runnable() {
+				public void run() {
+					for (int z = ai.getAndIncrement(); z < d; z = ai
+							.getAndIncrement()) {
+						for (int y = 0; y < h; y++) {
+							final int index = y * w;
+							for (int x = 0; x < w; x++) {
+								if (deletionArray[z][index + x] == Byte.MAX_VALUE) {
+									setPixel(stack, x, y, z, w, h, d, WHITE);
+									deletionCount[z]++;
+									deletionArray[z][index + x] = Byte.MIN_VALUE;
+								}
+							}
+						}
 					}
 				}
-			}
+			});
 		}
-		IJ.log("Deleted "+countDeleted(deletionCount));
+		Multithreader.startAndJoin(threads);
+		IJ.log("Deleted " + countDeleted(deletionCount));
 	}
 
 	/**
