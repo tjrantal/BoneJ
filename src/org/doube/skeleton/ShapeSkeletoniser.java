@@ -28,6 +28,7 @@ import org.doube.util.Multithreader;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.plugin.Duplicator;
 import ij.plugin.PlugIn;
 
 /**
@@ -60,6 +61,8 @@ public class ShapeSkeletoniser implements PlugIn {
 			return;
 		}
 		ImagePlus skeleton = shapeSkeletonize(imp);
+		// imp.setStack(null, skeleton.getImageStack()); //replace original
+		skeleton.setTitle("Skeleton of " + imp.getTitle()); // new image
 		skeleton.show();
 	}
 
@@ -73,7 +76,10 @@ public class ShapeSkeletoniser implements PlugIn {
 		ImageCheck ic = new ImageCheck();
 		if (!ic.isBinary(imp))
 			throw new IllegalArgumentException();
-		ImageStack stack = imp.getImageStack();
+		Duplicator d = new Duplicator();
+		ImagePlus skeleton = d.run(imp);
+		ImageStack stack = skeleton.getImageStack();
+
 		byte[][] deletionArray = initialiseEmptyArray(imp);
 		byte[][] markerArray = initialiseEmptyArray(imp);
 		// set up the deletion counters so we can enter the while loop
@@ -90,7 +96,6 @@ public class ShapeSkeletoniser implements PlugIn {
 			scan3(stack, markerArray, deletionArray, deletionCount);
 			iteration++;
 		}
-		ImagePlus skeleton = new ImagePlus("Skeleton", stack);
 		return skeleton;
 	}
 
