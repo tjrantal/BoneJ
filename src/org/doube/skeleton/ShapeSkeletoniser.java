@@ -80,8 +80,7 @@ public class ShapeSkeletoniser implements PlugIn {
 		ImagePlus skeleton = d.run(imp);
 		ImageStack stack = skeleton.getImageStack();
 
-		byte[][] deletionArray = initialiseEmptyArray(imp);
-		byte[][] markerArray = initialiseEmptyArray(imp);
+		short[][] workArray = initialiseEmptyArray(imp);
 		// set up the deletion counters so we can enter the while loop
 		long[] deletionCount;
 		deletionCount = new long[stack.getSize()];
@@ -89,11 +88,11 @@ public class ShapeSkeletoniser implements PlugIn {
 		int iteration = 1;
 		while (countDeleted(deletionCount) > 0) {
 			IJ.showStatus("Iteration " + iteration + ", scan 1");
-			scan1(stack, markerArray, deletionArray, deletionCount);
+			scan1(stack, workArray, deletionCount);
 			IJ.showStatus("Iteration " + iteration + ", scan 2");
-			scan2(stack, markerArray, deletionArray, deletionCount);
+			scan2(stack, workArray, deletionCount);
 			IJ.showStatus("Iteration " + iteration + ", scan 3");
-			scan3(stack, markerArray, deletionArray, deletionCount);
+			scan3(stack, workArray, deletionCount);
 			iteration++;
 		}
 		return skeleton;
@@ -106,8 +105,7 @@ public class ShapeSkeletoniser implements PlugIn {
 		return count;
 	}
 
-	private void scan1(final ImageStack stack, final byte[][] markerArray,
-			final byte[][] deletionArray, long[] deletionCount) {
+	private void scan1(final ImageStack stack, final short workArray[][], long[] deletionCount) {
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
@@ -126,7 +124,7 @@ public class ShapeSkeletoniser implements PlugIn {
 								if (getPixel(stack, x, y, z, w, h, d) == WHITE)
 									continue;
 								// "during the first scan the set of unmarked s-open points is used for erosion"
-								if (markerArray[z][index + x] > Byte.MIN_VALUE)
+								if (workArray[z][index + x] > Short.MIN_VALUE)
 									continue;
 								// is unmarked
 								byte[] neighbours = getNeighborhood(stack, x,
@@ -137,12 +135,12 @@ public class ShapeSkeletoniser implements PlugIn {
 								// is s-open and a shape point: mark
 								if (isShapePoint(neighbours, stack, x, y, z, w,
 										h, d))
-									markerArray[z][index + x]++;
+									workArray[z][index + x]++;
 								else {
 									// is not a shape point and is a simple
 									// point: delete
 									if (isSimplePoint(neighbours))
-										deletionArray[z][index + x] = Byte.MAX_VALUE;
+										workArray[z][index + x] = Short.MAX_VALUE;
 								}
 							}
 						}
@@ -151,11 +149,10 @@ public class ShapeSkeletoniser implements PlugIn {
 			});
 		}
 		Multithreader.startAndJoin(threads);
-		deleteDeletable(stack, deletionArray, deletionCount);
+		deleteDeletable(stack, workArray, deletionCount);
 	}
 
-	private void scan2(final ImageStack stack, final byte[][] markerArray,
-			final byte[][] deletionArray, long[] deletionCount) {
+	private void scan2(final ImageStack stack, final short[][] workArray, long[] deletionCount) {
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
@@ -171,7 +168,7 @@ public class ShapeSkeletoniser implements PlugIn {
 							for (int x = 0; x < w; x++) {
 								if (getPixel(stack, x, y, z, w, h, d) == WHITE)
 									continue;
-								if (markerArray[z][index + x] > Byte.MIN_VALUE)
+								if (workArray[z][index + x] > Short.MIN_VALUE)
 									continue;
 								byte[] neighbours = getNeighborhood(stack, x,
 										y, z, w, h, d);
@@ -180,7 +177,7 @@ public class ShapeSkeletoniser implements PlugIn {
 									continue;
 								if (isSimplePoint(neighbours)
 										&& condition3(neighbours))
-									deletionArray[z][index + x] = Byte.MAX_VALUE;
+									workArray[z][index + x] = Short.MAX_VALUE;
 							}
 						}
 					}
@@ -188,11 +185,10 @@ public class ShapeSkeletoniser implements PlugIn {
 			});
 		}
 		Multithreader.startAndJoin(threads);
-		deleteDeletable(stack, deletionArray, deletionCount);
+		deleteDeletable(stack, workArray, deletionCount);
 	}
 
-	private void scan3(final ImageStack stack, final byte[][] markerArray,
-			final byte[][] deletionArray, long[] deletionCount) {
+	private void scan3(final ImageStack stack, final short[][] workArray, long[] deletionCount) {
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
@@ -208,13 +204,13 @@ public class ShapeSkeletoniser implements PlugIn {
 							for (int x = 0; x < w; x++) {
 								if (getPixel(stack, x, y, z, w, h, d) == WHITE)
 									continue;
-								if (markerArray[z][index + x] > Byte.MIN_VALUE)
+								if (workArray[z][index + x] > Short.MIN_VALUE)
 									continue;
 								byte[] neighbours = getNeighborhood(stack, x,
 										y, z, w, h, d);
 								if (isVOpen(neighbours, stack, x, y, z, w, h, d)) {
 									if (isSimplePoint(neighbours))
-										deletionArray[z][index + x] = Byte.MAX_VALUE;
+										workArray[z][index + x] = Short.MAX_VALUE;
 								}
 							}
 						}
@@ -223,11 +219,11 @@ public class ShapeSkeletoniser implements PlugIn {
 			});
 		}
 		Multithreader.startAndJoin(threads);
-		deleteDeletable(stack, deletionArray, deletionCount);
+		deleteDeletable(stack, workArray, deletionCount);
 	}
 
 	private void deleteDeletable(final ImageStack stack,
-			final byte[][] deletionArray, final long[] deletionCount) {
+			final short[][] workArray, final long[] deletionCount) {
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
@@ -241,10 +237,10 @@ public class ShapeSkeletoniser implements PlugIn {
 						for (int y = 0; y < h; y++) {
 							final int index = y * w;
 							for (int x = 0; x < w; x++) {
-								if (deletionArray[z][index + x] == Byte.MAX_VALUE) {
+								if (workArray[z][index + x] == Short.MAX_VALUE) {
 									setPixel(stack, x, y, z, w, h, d, WHITE);
 									deletionCount[z]++;
-									deletionArray[z][index + x] = Byte.MIN_VALUE;
+									workArray[z][index + x] = Short.MIN_VALUE;
 								}
 							}
 						}
@@ -257,21 +253,22 @@ public class ShapeSkeletoniser implements PlugIn {
 	}
 
 	/**
-	 * Create work array, in which the voxels to be removed will be registered
+	 * Create work array, in which marked voxels and the voxels to be removed
+	 * will be registered
 	 * 
 	 * @param imp
-	 * @return array containing voxels for keeping (0) or deletion (255)
+	 * @return array containing marked voxels (> Short.MIN_VALUE) for keeping (< Short.MAX_VALUE) or deletion (Short.MAX_VALUE)
 	 */
-	private byte[][] initialiseEmptyArray(ImagePlus imp) {
+	private short[][] initialiseEmptyArray(ImagePlus imp) {
 		ImageStack stack = imp.getImageStack();
 		final int w = stack.getWidth();
 		final int h = stack.getHeight();
 		final int d = stack.getSize();
 		final int wh = w * h;
-		byte[][] workArray = new byte[d][wh];
+		short[][] workArray = new short[d][wh];
 		for (int z = 0; z < d; z++) {
-			workArray[z] = (byte[]) Moments.getEmptyPixels(w, h, 8);
-			Arrays.fill(workArray[z], Byte.MIN_VALUE);
+			workArray[z] = (short[]) Moments.getEmptyPixels(w, h, 16);
+			Arrays.fill(workArray[z], Short.MIN_VALUE);
 		}
 		return workArray;
 	}
