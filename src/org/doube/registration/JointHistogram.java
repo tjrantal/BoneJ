@@ -44,11 +44,11 @@ public class JointHistogram {
 
 	public JointHistogram(ImagePlus img1, ImagePlus img2, int nBins, float min,
 			float max, boolean limit) {
-		if (img1.getType() != getImg2().getType())
+		if (img1.getType() != img2.getType())
 			throw new IllegalArgumentException("Image types must match");
-		if (img1.getWidth() != getImg2().getWidth()
-				|| img1.getHeight() != getImg2().getHeight()
-				|| img1.getStackSize() != getImg2().getStackSize())
+		if (img1.getWidth() != img2.getWidth()
+				|| img1.getHeight() != img2.getHeight()
+				|| img1.getStackSize() != img2.getStackSize())
 			throw new IllegalArgumentException("Image dimensions must match");
 		setImg1(img1);
 		setImg2(img2);
@@ -110,7 +110,6 @@ public class JointHistogram {
 
 		// Registration occurs when mutualInformation is maximal
 		mutualInfo = entropy1 + entropy2 - entropy3;
-		IJ.log("Mutual information = " + IJ.d2s(getMutualInfo(), 4));
 
 		// Or when NMI is maximal
 		normMutualInfo = (entropy1 + entropy2) / entropy3;

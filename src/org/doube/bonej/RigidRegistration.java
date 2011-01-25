@@ -68,6 +68,7 @@ public class RigidRegistration implements PlugIn {
 					+ IJ.d2s(jh.getEntropy2(), 4));
 			IJ.log("Shannon entropy of Joint Histogram = "
 					+ IJ.d2s(jh.getEntropy3(), 4));
+			IJ.log("Mutual information = " + IJ.d2s(jh.getMutualInfo(), 4));
 			IJ.log("Normalised mutual information = "
 					+ IJ.d2s(jh.getNormMutualInfo(), 4));
 			if (img3 != null) {
@@ -75,7 +76,7 @@ public class RigidRegistration implements PlugIn {
 				IJ.run("Fire");
 			}
 		} catch (Exception e) {
-			IJ.error(e.getMessage());
+			IJ.handleException(e);
 			return;
 		}
 	}
