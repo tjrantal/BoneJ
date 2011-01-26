@@ -1,6 +1,11 @@
 package org.doube.bonej;
 
+import java.util.ArrayList;
+
+import org.doube.geometry.Rotation;
+import org.doube.jama.Matrix;
 import org.doube.registration.JointHistogram;
+import org.doube.registration.Transformer;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -59,27 +64,32 @@ public class RigidRegistration implements PlugIn {
 		boolean limit = gd.getNextBoolean();
 		int nBins = (int) gd.getNextNumber();
 		try {
-			JointHistogram jh = new JointHistogram(img1, img2, nBins, min, max,
-					limit);
-			jh.calculate();
-			ImagePlus img3 = jh.getJointHistogram();
-			IJ.log("Shannon entropy of " + img1.getTitle() + " = "
-					+ IJ.d2s(jh.getEntropy1(), 4));
-			IJ.log("Shannon entropy of " + img2.getTitle() + " = "
-					+ IJ.d2s(jh.getEntropy2(), 4));
-			IJ.log("Shannon entropy of Joint Histogram = "
-					+ IJ.d2s(jh.getEntropy3(), 4));
-			IJ.log("Mutual information = " + IJ.d2s(jh.getMutualInfo(), 4));
-			IJ.log("Normalised mutual information = "
-					+ IJ.d2s(jh.getNormMutualInfo(), 4));
-			if (img3 != null) {
+			ImagePlus img3 = register(img1, img2, nBins, min, max, limit);
+			if (img3 != null)
 				img3.show();
-				IJ.run("Fire");
-			}
 		} catch (Exception e) {
 			IJ.handleException(e);
 			return;
 		}
 	}
 
+	private ImagePlus register(ImagePlus img1, ImagePlus img2, int nBins, float min,
+			float max, boolean limit) {
+		JointHistogram jh = new JointHistogram(img1, img2, nBins, min, max,
+				limit);
+		jh.calculate();
+		double nmi = jh.getNormMutualInfo();
+		IJ.log("Starting NMI = "+IJ.d2s(nmi, 5));
+		ArrayList<double[][]> rotations = Rotation.randomRotations(1);
+		
+		for (int i = 0; i < rotations.size(); i++){
+			ImagePlus testImp = Transformer.rotate(img2, rotations.get(i));
+			jh.setImg2(testImp);
+			jh.calculate();
+			Matrix R = new Matrix(rotations.get(i));
+			R.printToIJLog("i: "+i+", NMI: "+jh.getNormMutualInfo());
+			testImp.show();
+		}				
+		return null; //TODO return an actual imp 
+	}
 }
