@@ -122,6 +122,12 @@ public class Vectors {
 			randomVectors[n][1] = rho * Math.sin(phi);
 			randomVectors[n][2] = z;
 		}
+		for (double[] v : randomVectors){
+			final double d = Trig.distance3D(v);
+			v[0] /= d;
+			v[1] /= d;
+			v[2] /= d;
+		}
 		return randomVectors;
 	}
 
