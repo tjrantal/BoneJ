@@ -61,7 +61,8 @@ public class RigidRegistration implements PlugIn {
 		try {
 			JointHistogram jh = new JointHistogram(img1, img2, nBins, min, max,
 					limit);
-			ImagePlus img3 = jh.calculate();
+			jh.calculate();
+			ImagePlus img3 = jh.getJointHistogram();
 			IJ.log("Shannon entropy of " + img1.getTitle() + " = "
 					+ IJ.d2s(jh.getEntropy1(), 4));
 			IJ.log("Shannon entropy of " + img2.getTitle() + " = "

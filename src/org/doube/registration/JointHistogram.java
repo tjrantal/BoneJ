@@ -2,7 +2,6 @@ package org.doube.registration;
 
 import org.doube.bonej.ThresholdMinConn;
 
-import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.measure.Calibration;
@@ -39,6 +38,9 @@ public class JointHistogram {
 
 	private double mutualInfo;
 	private double normMutualInfo;
+	
+	/** Joint histogram of img1 and img2  */
+	private FloatProcessor ip;
 
 	private int[] hist1;
 
@@ -50,15 +52,15 @@ public class JointHistogram {
 				|| img1.getHeight() != img2.getHeight()
 				|| img1.getStackSize() != img2.getStackSize())
 			throw new IllegalArgumentException("Image dimensions must match");
-		setImg1(img1);
-		setImg2(img2);
+		this.img1 = img1;
+		this.img2 = img2;
 		this.nBins = nBins;
 		this.min = min;
 		this.max = max;
 		this.autoLimit = limit;
 	}
 
-	public ImagePlus calculate() {
+	public void calculate() {
 		ThresholdMinConn tmc = new ThresholdMinConn();
 		if (hist1 == null)
 			hist1 = tmc.getStackHistogram(img1);
@@ -70,7 +72,7 @@ public class JointHistogram {
 			max = getHistogramMax(hist1);
 			max = Math.max(max, getHistogramMax(hist2));
 		}
-		FloatProcessor ip = new FloatProcessor(nBins, nBins);
+		ip = new FloatProcessor(nBins, nBins);
 
 		final int w = img1.getWidth();
 		final int h = img1.getHeight();
@@ -113,19 +115,8 @@ public class JointHistogram {
 
 		// Or when NMI is maximal
 		normMutualInfo = (entropy1 + entropy2) / entropy3;
-
-		ImagePlus imp = new ImagePlus("Joint Histogram", ip);
-		Calibration cal = new Calibration();
-		cal.setValueUnit("count");
-		cal.setXUnit(img1.getCalibration().getValueUnit());
-		cal.setYUnit(getImg2().getCalibration().getValueUnit());
-		cal.pixelWidth = cal.pixelHeight = (max - min) / nBins;
-		cal.xOrigin = -min / cal.pixelWidth;
-		cal.yOrigin = -min / cal.pixelHeight;
-		imp.setCalibration(cal);
-		return imp;
 	}
-
+	
 	private static double getHistogramMin(int[] histogram) {
 		int i = 0;
 		while (histogram[i] == 0)
@@ -214,6 +205,21 @@ public class JointHistogram {
 	 */
 	public ImagePlus getImg2() {
 		return img2;
+	}
+	
+	public ImagePlus getJointHistogram(){
+		if (ip == null)
+			return null;
+		ImagePlus imp = new ImagePlus("Joint Histogram", ip);
+		Calibration cal = new Calibration();
+		cal.setValueUnit("count");
+		cal.setXUnit(img1.getCalibration().getValueUnit());
+		cal.setYUnit(getImg2().getCalibration().getValueUnit());
+		cal.pixelWidth = cal.pixelHeight = (max - min) / nBins;
+		cal.xOrigin = -min / cal.pixelWidth;
+		cal.yOrigin = -min / cal.pixelHeight;
+		imp.setCalibration(cal);
+		return imp;
 	}
 
 	/**
