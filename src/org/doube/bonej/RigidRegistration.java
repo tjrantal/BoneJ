@@ -73,23 +73,54 @@ public class RigidRegistration implements PlugIn {
 		}
 	}
 
-	private ImagePlus register(ImagePlus img1, ImagePlus img2, int nBins, float min,
-			float max, boolean limit) {
+	private ImagePlus register(ImagePlus img1, ImagePlus img2, int nBins,
+			float min, float max, boolean limit) {
 		JointHistogram jh = new JointHistogram(img1, img2, nBins, min, max,
 				limit);
 		jh.calculate();
 		double nmi = jh.getNormMutualInfo();
-		IJ.log("Starting NMI = "+IJ.d2s(nmi, 5));
-		ArrayList<double[][]> rotations = Rotation.randomRotations(1);
-		
-		for (int i = 0; i < rotations.size(); i++){
+		double maxNmi = nmi;
+		int besti = 0;
+		int bestj = 0;
+		IJ.log("Starting NMI = " + IJ.d2s(nmi, 5));
+		ArrayList<double[][]> rotations = Rotation.randomRotations(64);
+		ArrayList<double[]> translations = randomTranslations(64);
+
+		for (int i = 0; i < rotations.size(); i++) {
 			ImagePlus testImp = Transformer.rotate(img2, rotations.get(i));
-			jh.setImg2(testImp);
-			jh.calculate();
-			Matrix R = new Matrix(rotations.get(i));
-			R.printToIJLog("i: "+i+", NMI: "+jh.getNormMutualInfo());
-			testImp.show();
-		}				
-		return null; //TODO return an actual imp 
+			for (int j = 0; j < translations.size(); j++) {
+				testImp = Transformer.translate(testImp, translations.get(j));
+				jh.setImg2(testImp);
+				jh.calculate();
+				Matrix R = new Matrix(rotations.get(i));
+				nmi = jh.getNormMutualInfo();
+				R.printToIJLog("i: " + i + ", j: " + j + ", NMI: " + nmi);
+				if (nmi > maxNmi && nmi != Double.POSITIVE_INFINITY) {
+					maxNmi = nmi;
+					besti = i;
+					bestj = j;
+				}
+			}
+		}
+		IJ.log("Best NMI was at rotation index " + besti
+				+ ", translation index " + bestj);
+		return Transformer.translate(Transformer.rotate(img2, rotations
+				.get(besti)), translations.get(bestj));
+	}
+
+	/**
+	 * Create a list of unit translations in x, y, z
+	 * 
+	 * @param n
+	 * @return
+	 */
+	private ArrayList<double[]> randomTranslations(int n) {
+		ArrayList<double[]> translations = new ArrayList<double[]>(n);
+		for (int i = 0; i < n; i++) {
+			double[] t = { Math.random() * 2 - 1, Math.random() * 2 - 1,
+					Math.random() * 2 - 1, };
+			translations.add(t);
+		}
+		return translations;
 	}
 }
