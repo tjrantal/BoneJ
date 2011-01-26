@@ -69,7 +69,7 @@ public class Vectors {
 
 		return crossVector;
 	}
-	
+
 	/**
 	 * Calculate the cross product of 2 column vectors, both in double[3][1]
 	 * format
@@ -125,4 +125,34 @@ public class Vectors {
 		return randomVectors;
 	}
 
+	/**
+	 * Calculate the angle between two vectors
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static double angle(double[] a, double[] b) {
+		double da = Trig.distance3D(a);
+		double db = Trig.distance3D(b);
+		double angle = Math.acos(dotProduct(a, b) / (da * db));
+		return angle;
+	}
+
+	/**
+	 * Calculate the dot product of two vectors
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static double dotProduct(double[] a, double[] b) {
+		if (a.length != b.length)
+			throw new IllegalArgumentException("Array lengths are unequal");
+		double dot = 0;
+		final int l = a.length;
+		for (int i = 0; i < l; i++)
+			dot += a[i] * b[i];
+		return dot;
+	}
 }
