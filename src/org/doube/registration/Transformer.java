@@ -98,9 +98,7 @@ public class Transformer {
 	/**
 	 * @param imp
 	 * @param t
-	 *            unit translation - will be scaled to 1/2 image dimensions
-	 *            (i.e. actual translation sampling density may be anisotropic
-	 *            depending on stack size)
+	 *            Absolute translation in voxel units
 	 * @return
 	 */
 	public static ImagePlus translate(ImagePlus imp, double[] t) {
@@ -108,9 +106,6 @@ public class Transformer {
 		final int w = source.getWidth();
 		final int h = source.getHeight();
 		final int d = source.getSize();
-		final double xc = (double) w / 2;
-		final double yc = (double) h / 2;
-		final double zc = (double) d / 2;
 		final double xt = t[0];
 		final double yt = t[1];
 		final double zt = t[2];
@@ -136,13 +131,13 @@ public class Transformer {
 					for (int z = ai.getAndIncrement(); z <= d; z = ai
 							.getAndIncrement()) {
 						ImageProcessor tip = targetProcessors[z];
-						final double zD = z + zc * zt;
+						final double zD = z + zt;
 						final int zA = (int) Math.floor(zD);
 						for (int y = 0; y < h; y++) {
-							final double yD = y + yc * yt;
+							final double yD = y + yt;
 							final int yA = (int) Math.floor(yD);
 							for (int x = 0; x < w; x++) {
-								final double xD = x + xc * xt;
+								final double xD = x + xt;
 								final int xA = (int) Math.floor(xD);
 								if (xA < 0 || xA >= w || yA < 0 || yA >= h
 										|| zA < 1 || zA > d) {
