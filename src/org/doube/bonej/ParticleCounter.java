@@ -53,7 +53,6 @@ import ij.measure.Calibration;
 import ij.measure.ResultsTable;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
-import ij3d.Content;
 import ij3d.Image3DUniverse;
 
 /**
@@ -364,7 +363,6 @@ public class ParticleCounter implements PlugIn, DialogListener {
 		if (doSurfaceImage || doCentroidImage || doAxesImage || do3DOriginal
 				|| doEllipsoidImage) {
 			Image3DUniverse univ = new Image3DUniverse();
-			univ.show();
 			if (doSurfaceImage) {
 				displayParticleSurfaces(univ, surfacePoints, colourMode,
 						volumes, splitValue);
@@ -383,14 +381,7 @@ public class ParticleCounter implements PlugIn, DialogListener {
 			if (do3DOriginal) {
 				display3DOriginal(imp, origResampling, univ);
 			}
-			try {
-				if (univ.contains(imp.getTitle())) {
-					Content c = univ.getContent(imp.getTitle());
-					univ.adjustView(c);
-				}
-			} catch (NullPointerException npe) {
-				IJ.log("3D Viewer was closed before rendering completed.");
-			}
+			univ.show();
 		}
 		IJ.showProgress(1.0);
 		IJ.showStatus("Particle Analysis Complete");
