@@ -73,6 +73,9 @@ public class RigidRegistration implements PlugIn {
 		int nBins = (int) gd.getNextNumber();
 		try {
 			ImagePlus img3 = register(img1, img2, nBins, min, max, limit);
+			JointHistogram jh = new JointHistogram(img1, img3, nBins, min, max, limit);
+			jh.calculate();
+			jh.getJointHistogram().show();
 			if (img3 != null)
 				img3.show();
 		} catch (Exception e) {
@@ -96,9 +99,9 @@ public class RigidRegistration implements PlugIn {
 		final double w = (double) img2.getWidth();
 		final double h = (double) img2.getHeight();
 		final double d = (double) img2.getStackSize();
-		final int nX = 8;
-		final int nY = 8;
-		final int nZ = 8;
+		final int nX = 11;
+		final int nY = 11;
+		final int nZ = 11;
 		double s = 0.25;
 		ArrayList<double[]> translations = gridTranslations(nX, nY, nZ, -w * s,
 				w * s, -h * s, h * s, -d * s, d * s);
@@ -118,7 +121,7 @@ public class RigidRegistration implements PlugIn {
 			if (nmi != Double.POSITIVE_INFINITY)
 				nmis.add(new Double(nmi));
 			else
-				nmis.add(null);
+				nmis.add(new Double(0));
 			if (nmi > maxNmi && nmi != Double.POSITIVE_INFINITY) {
 				// R.printToIJLog("i: " + i + ", j: " + j + ", NMI: " +
 				// nmi);
@@ -130,6 +133,8 @@ public class RigidRegistration implements PlugIn {
 		// }
 		IJ.log("Best NMI was at rotation index " + besti
 				+ ", translation index " + bestj);
+		double[] t = translations.get(bestj);
+		IJ.log("Translation: (" + t[0] + ", " + t[1] + ", " + t[2] + ")");
 		displayNmiGrid(nmis, translations);
 		return Transformer.translate(img2, translations.get(bestj));
 	}
@@ -137,20 +142,23 @@ public class RigidRegistration implements PlugIn {
 	private void displayNmiGrid(ArrayList<Double> nmis,
 			ArrayList<double[]> translations) {
 		double maxNmi = 0;
-		for (Double nmi : nmis)
+		for (Double nmi : nmis) {
+			if (nmi.equals(null))
+				continue;
 			maxNmi = Math.max(nmi.doubleValue(), maxNmi);
+		}
 		final int nPoints = nmis.size();
 		Image3DUniverse univ = new Image3DUniverse();
 		for (int i = 0; i < nPoints; i++) {
 			Double nmi = nmis.get(i);
-			if (nmi == null)
+			if (nmi.equals(null))
 				continue;
 			List<Point3f> mesh = new ArrayList<Point3f>();
 			mesh.add(new Point3f((float) translations.get(i)[0],
 					(float) translations.get(i)[1],
 					(float) translations.get(i)[2]));
 			CustomPointMesh cm = new CustomPointMesh(mesh);
-			final float n = (float)(nmi.doubleValue() / maxNmi);
+			final float n = (float) (nmi.doubleValue() / maxNmi);
 			cm.setPointSize(5.0f * n);
 			cm.setColor(new Color3f(n, n, 1.0f - n));
 			Content c = univ.addCustomMesh(cm, "" + i);

@@ -131,13 +131,13 @@ public class Transformer {
 					for (int z = ai.getAndIncrement(); z <= d; z = ai
 							.getAndIncrement()) {
 						ImageProcessor tip = targetProcessors[z];
-						final double zD = z + zt;
+						final double zD = z - zt;
 						final int zA = (int) Math.floor(zD);
 						for (int y = 0; y < h; y++) {
-							final double yD = y + yt;
+							final double yD = y - yt;
 							final int yA = (int) Math.floor(yD);
 							for (int x = 0; x < w; x++) {
-								final double xD = x + xt;
+								final double xD = x - xt;
 								final int xA = (int) Math.floor(xD);
 								if (xA < 0 || xA >= w || yA < 0 || yA >= h
 										|| zA < 1 || zA > d) {
