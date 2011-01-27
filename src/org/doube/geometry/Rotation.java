@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class Rotation {
 
-	private static final double[] NORTH = { 0, 0, 1 };
+	public static final double[] NORTH = { 0, 0, 1 };
 
 	/** Generate a list of random rotation matrices */
 	public static ArrayList<double[][]> randomRotations(int nRotations) {
@@ -60,6 +60,24 @@ public class Rotation {
 		r[2][1] = t * y * z + x * s;
 		r[2][2] = t * z * z + c;
 		return r;
+	}
+	
+	/**
+	 * Rotate a 3D vector by a rotation matrix
+	 *  
+	 * @param vector
+	 * @param rot Rotation matrix
+	 * @return 
+	 */
+	public static double[] rotate(double[] vector, double[][] rot){
+		final double x = vector[0];
+		final double y = vector[1];
+		final double z = vector[2];
+		double[] rotated = new double[3];
+		rotated[0] = x *rot[0][0] + y * rot[1][0] + z * rot[2][0];
+		rotated[1] = x *rot[0][1] + y * rot[1][1] + z * rot[2][1];
+		rotated[2] = x *rot[0][2] + y * rot[1][2] + z * rot[2][2];
+		return rotated;
 	}
 
 }
