@@ -44,6 +44,8 @@ public class JointHistogram {
 
 	private int[] hist1;
 
+	private boolean limitsSet = false;
+
 	public JointHistogram(ImagePlus img1, ImagePlus img2, int nBins, float min,
 			float max, boolean limit) {
 		if (img1.getType() != img2.getType())
@@ -66,11 +68,12 @@ public class JointHistogram {
 			hist1 = tmc.getStackHistogram(img1);
 		int[] hist2 = tmc.getStackHistogram(getImg2());
 
-		if (autoLimit) {
+		if (autoLimit && !limitsSet) {
 			min = getHistogramMin(hist1);
 			min = Math.min(min, getHistogramMin(hist2));
 			max = getHistogramMax(hist1);
 			max = Math.max(max, getHistogramMax(hist2));
+			limitsSet = true;
 		}
 		ip = new FloatProcessor(nBins, nBins);
 
@@ -243,4 +246,14 @@ public class JointHistogram {
 		return entropy3;
 	}
 
+	/**
+	 * Clean up resources to allow garbage collection
+	 */
+	public void dispose(){
+		img1 = null;
+		img2 = null;
+		hist1 = null;
+		ip = null;
+	}
+	
 }

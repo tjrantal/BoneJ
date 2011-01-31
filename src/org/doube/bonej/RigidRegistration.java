@@ -11,6 +11,7 @@ import org.doube.jama.Matrix;
 import org.doube.registration.JointHistogram;
 import org.doube.registration.Transformer;
 
+import customnode.CustomLineMesh;
 import customnode.CustomPointMesh;
 
 import ij.IJ;
@@ -25,6 +26,7 @@ import ij3d.Image3DUniverse;
 public class RigidRegistration implements PlugIn {
 
 	private String title1 = "", title2 = "";
+	private JointHistogram jh;
 
 	public void run(String arg) {
 		int[] wList = WindowManager.getIDList();
@@ -73,22 +75,25 @@ public class RigidRegistration implements PlugIn {
 		int nBins = (int) gd.getNextNumber();
 		try {
 			ImagePlus img3 = register(img1, img2, nBins, min, max, limit);
-			JointHistogram jh = new JointHistogram(img1, img3, nBins, min, max,
-					limit);
+			jh.setImg2(img3);
 			jh.calculate();
 			jh.getJointHistogram().show();
 			if (img3 != null)
 				img3.show();
+			dispose();
 		} catch (Exception e) {
 			IJ.handleException(e);
 			return;
 		}
 	}
 
+	public void dispose() {
+		jh.dispose();
+	}
+
 	private ImagePlus register(ImagePlus img1, ImagePlus img2, int nBins,
 			float min, float max, boolean limit) {
-		JointHistogram jh = new JointHistogram(img1, img2, nBins, min, max,
-				limit);
+		jh = new JointHistogram(img1, img2, nBins, min, max, limit);
 		jh.calculate();
 		double nmi = jh.getNormMutualInfo();
 		double maxNmi = nmi;
@@ -127,13 +132,13 @@ public class RigidRegistration implements PlugIn {
 				+ ", translation index " + bestj);
 		double[] t = translations.get(bestj);
 		IJ.log("Translation: (" + t[0] + ", " + t[1] + ", " + t[2] + ")");
-		
+
 		img2 = Transformer.translate(img2, translations.get(bestj));
 		ArrayList<Double> nmir = new ArrayList<Double>(nX * nY * nZ);
 		for (int i = 0; i < rotations.size(); i++) {
 			double[][] r = rotations.get(i);
 			Matrix R = new Matrix(r);
-			R.printToIJLog("Rotation "+i);
+			R.printToIJLog("Rotation " + i);
 			ImagePlus testImp = Transformer.rotate(img2, r);
 			jh.setImg2(testImp);
 			jh.calculate();
@@ -147,13 +152,13 @@ public class RigidRegistration implements PlugIn {
 				besti = i;
 			}
 		}
-		displayNmiGrid(nmit, translations);
-		displayNmiSphere(nmir, rotations);
+		displayNmiGrid(nmit, translations, bestj);
+		displayNmiSphere(nmir, rotations, besti);
 		return Transformer.rotate(img2, rotations.get(besti));
 	}
 
 	private void displayNmiSphere(ArrayList<Double> nmis,
-			ArrayList<double[][]> rotations) {
+			ArrayList<double[][]> rotations, int best) {
 		double maxNmi = 0;
 		for (Double nmi : nmis) {
 			if (nmi.equals(null))
@@ -173,15 +178,26 @@ public class RigidRegistration implements PlugIn {
 					(float) rotated[2]));
 			CustomPointMesh cm = new CustomPointMesh(mesh);
 			final float n = (float) (nmi.doubleValue() / maxNmi);
-			cm.setPointSize(5.0f * n);
-			cm.setColor(new Color3f(n, n, 1.0f - n));
+			if (i == best) {
+				cm.setPointSize(10.0f * n);
+				cm.setColor(new Color3f(1.0f, 1.0f, 1.0f));
+			} else {
+				cm.setPointSize(5.0f * n);
+				cm.setColor(new Color3f(n, n, 1.0f - n));
+			}
 			Content c = univ.addCustomMesh(cm, "" + i);
 		}
+		List<Point3f> points = new ArrayList<Point3f>();
+		points.add(new Point3f(0.0f, 0.0f, 0.0f));
+		points.add(new Point3f(0.0f, 0.0f, 1.0f));
+		CustomLineMesh lm = new CustomLineMesh(points);
+		lm.setColor(new Color3f(1.0f, 0.0f, 0.0f));
+		univ.addCustomMesh(lm, "North");
 		univ.show();
 	}
 
 	private void displayNmiGrid(ArrayList<Double> nmis,
-			ArrayList<double[]> translations) {
+			ArrayList<double[]> translations, int best) {
 		double maxNmi = 0;
 		for (Double nmi : nmis) {
 			if (nmi.equals(null))
@@ -200,8 +216,13 @@ public class RigidRegistration implements PlugIn {
 					(float) translations.get(i)[2]));
 			CustomPointMesh cm = new CustomPointMesh(mesh);
 			final float n = (float) (nmi.doubleValue() / maxNmi);
-			cm.setPointSize(5.0f * n);
-			cm.setColor(new Color3f(n, n, 1.0f - n));
+			if (i == best) {
+				cm.setPointSize(10.0f * n);
+				cm.setColor(new Color3f(1.0f, 1.0f, 1.0f));
+			} else {
+				cm.setPointSize(5.0f * n);
+				cm.setColor(new Color3f(n, n, 1.0f - n));
+			}
 			Content c = univ.addCustomMesh(cm, "" + i);
 		}
 		univ.show();
