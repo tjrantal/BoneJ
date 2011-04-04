@@ -83,8 +83,8 @@ public class MeasureSurface implements PlugIn {
 		final boolean[] channels = { true, false, false };
 
 		MCTriangulator mct = new MCTriangulator();
-		List<Point3f> points = mct.getTriangles(imp, threshold, channels,
-				resamplingF);
+		List<Point3f> points = mct.getTrianglesWithoutZeroPadding(imp,
+				threshold, channels, resamplingF);
 
 		IJ.log("Isosurface contains " + (points.size() / 3) + " triangles");
 
