@@ -37,7 +37,7 @@ public class ResultsWriter{
 	public void writeHeader(TextPanel textPanel,ImageAndAnalysisDetails imageAndAnalysisDetails){
 		String[] propertyNames = {"File Name","Patient's Name","Patient ID","Patient's Birth Date","Acquisition Date","Pixel Spacing","Object Length"};
 		String[] parameterNames = {"Air Threshold","Fat Threshold","Muscle Threshold","Marrow Threshold","Soft Threshold","Rotation Threshold","Area Threshold","BMD Threshold","Scaling Coefficient","Scaling Constant"};
-		String[] dHeadings = {"Manual Rotation","Flip Distribution","Guess right","Guess larger"
+		String[] dHeadings = {"Thresholdless","Lasso","Manual Rotation","Flip Distribution","Guess right","Guess larger"
 		,"Stacked bones","Invert guess","Allow Cleaving","Prevent PVE peeling","Roi choice","Rotation choice","Flip Horizontal","Flip Vertical"};
 		
 		String headings = "";
@@ -152,6 +152,8 @@ public class ResultsWriter{
 			results+=parameters[i]+"\t";
 		}
 
+		results += Boolean.toString(imageAndAnalysisDetails.thresholdless)+"\t";
+		results += Boolean.toString(imageAndAnalysisDetails.lasso)+"\t";
 		results += Boolean.toString(imageAndAnalysisDetails.manualRotation)+"\t";
 		results += Boolean.toString(imageAndAnalysisDetails.flipDistribution)+"\t";
 		results += Boolean.toString(imageAndAnalysisDetails.guessFlip)+"\t";
