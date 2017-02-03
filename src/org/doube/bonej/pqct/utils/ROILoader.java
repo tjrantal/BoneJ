@@ -33,7 +33,7 @@ public class ROILoader implements PlugIn {
 	*/
     public void run(String arg) {
 		String fileIn = Macro.getOptions();
-		IJ.log("ROILoader "+fileIn);
+		//IJ.log("ROILoader "+fileIn);
 		float[][] endoRoiCoordinates;
 		float[][] periRoiCoordinates;
 		try{
@@ -65,7 +65,7 @@ public class ROILoader implements PlugIn {
 		PolygonRoi periRoi = new PolygonRoi(periRoiCoordinates[0],periRoiCoordinates[1],periRoiCoordinates[0].length,Roi.POLYGON);//Roi.POLYLINE);
 		
 		RoiManager rm;
-		rm = RoiManager.getInstance();
+		rm = RoiManager.getInstance2();
 		if (rm != null){
 			rm.reset();	//Remove any pre-existing ROIs
 		}else{

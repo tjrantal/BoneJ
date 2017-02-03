@@ -43,7 +43,7 @@ public class ThresholdlessROI extends SelectROI{
 	public void execute() throws ExecutionException{
 		//IJ.log("Calling ThresholdlessROI execute");
 		//Get the endo an peri ROIs from roiManager
-		RoiManager rm = RoiManager.getInstance();	//Get a reference to the roi manager
+		RoiManager rm = RoiManager.getInstance2();	//Get a reference to the roi manager
 		Roi endoRoi = rm.getRoi(0);		//Pre-load these manually with ROILoader
 		Roi periRoi = rm.getRoi(1);		//Pre-load these manually with ROILoader
 		Roi ijROI;// = imp.getRoi();
