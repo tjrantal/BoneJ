@@ -78,10 +78,12 @@ public abstract class RoiSelector{
 	public String imageSavePath;
 	public ImagePlus imp;
 	public int bmcAlfaIndex = 0;
+	public boolean setRoi;
 	
 	public RoiSelector(ScaledImageData dataIn,ImageAndAnalysisDetails detailsIn, ImagePlus imp,double boneThreshold,boolean setRoi){
 				this.scaledImageData = dataIn;
 		this.imp = imp;
+		this.setRoi = setRoi;
 		details =detailsIn;
 		scaledImage = Arrays.copyOf(dataIn.scaledImage,dataIn.scaledImage.length);//(double[])dataIn.scaledImage.clone();
 		softScaledImage = Arrays.copyOf(dataIn.softScaledImage,dataIn.softScaledImage.length);//(double[])dataIn.softScaledImage.clone();

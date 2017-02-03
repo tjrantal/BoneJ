@@ -25,6 +25,8 @@ public class ImageAndAnalysisDetails{
 	public boolean flipVertical;
 	public boolean noFiltering;
 	public boolean sleeveOn;
+	public boolean lasso;			//Soft tissue lassoing
+	public boolean thresholdless;	//cortical border tracking
 	public double scalingFactor;
 	public double constant;
 	
@@ -88,6 +90,8 @@ public class ImageAndAnalysisDetails{
 		this.flipVertical			= defaultTopValues[i];++i;
 		this.noFiltering			= defaultTopValues[i];++i;
 		this.sleeveOn				= defaultTopValues[i];++i;
+		this.lasso					= defaultTopValues[i];++i;	
+		this.thresholdless			= defaultTopValues[i];++i;
 		
 		/*Thresholds and scaling*/
 		i = 0;

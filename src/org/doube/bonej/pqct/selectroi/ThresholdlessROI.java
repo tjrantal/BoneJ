@@ -27,51 +27,52 @@ import ij.*;		//ImagePlus
 import ij.gui.*;	//ImagePlus ROI
 import ij.text.*; 	//Debugging ...
 import ij.process.*;	//Debugging
+import ij.plugin.frame.RoiManager;
 import java.util.concurrent.ExecutionException;
 
 @SuppressWarnings(value ={"serial","unchecked"}) //Unchecked for obtaining Vector<Object> as a returnvalue
 
-public class SelectROI extends RoiSelector{
-	public Vector<DetectedEdge> edges;
+public class ThresholdlessROI extends SelectROI{
 	//ImageJ constructor
-	public SelectROI(ScaledImageData dataIn,ImageAndAnalysisDetails detailsIn, ImagePlus imp,double boneThreshold,boolean setRoi) throws ExecutionException{
+	public ThresholdlessROI(ScaledImageData dataIn,ImageAndAnalysisDetails detailsIn, ImagePlus imp,double boneThreshold,boolean setRoi) throws ExecutionException{
 		super(dataIn,detailsIn, imp,boneThreshold,setRoi);
 		//Select ROI
-		
-		/*Select ROI and set everything else than the roi to minimum*/
-		cortexROI = new double[width*height];	//Make a new copy of the image with only the ROI remaining
-		cortexRoiI = new Vector<Integer>();
-		cortexRoiJ = new Vector<Integer>();
-		cortexAreaRoiI = new Vector<Integer>();
-		cortexAreaRoiJ = new Vector<Integer>();
-		boneMarrowRoiI = new Vector<Integer>();
-		boneMarrowRoiJ = new Vector<Integer>();
-		execute();
-	}	
+	}
 	
+	@Override
 	public void execute() throws ExecutionException{
-		Roi ijROI = imp.getRoi();
+		//IJ.log("Calling ThresholdlessROI execute");
+		//Get the endo an peri ROIs from roiManager
+		RoiManager rm = RoiManager.getInstance();	//Get a reference to the roi manager
+		Roi endoRoi = rm.getRoi(0);		//Pre-load these manually with ROILoader
+		Roi periRoi = rm.getRoi(1);		//Pre-load these manually with ROILoader
+		Roi ijROI;// = imp.getRoi();
 		double[] tempScaledImage = Arrays.copyOf(scaledImage,scaledImage.length);//(double[]) scaledImage.clone();
-		if (ijROI != null && details.manualRoi){	/*Set pixels outside the manually selected ROI to zero*/
-			/*Check whether pixel is within ROI, mark with bone threshold*/
-			for (int j = 0;j< height;j++){
-				for (int i = 0; i < width;i++){
-					if (ijROI.contains(i,j)){
-					}else{
-						tempScaledImage[i+j*width] = minimum;
-					}
-				}
-			}
-			/*Check whether a polygon can be acquired and include polygon points too*/
-			Polygon polygon = ijROI.getPolygon();
-			if (polygon != null){
-				for (int j = 0;j< polygon.npoints;j++){
-					tempScaledImage[polygon.xpoints[j]+polygon.ypoints[j]*width] = scaledImage[polygon.xpoints[j]+polygon.ypoints[j]*width];
+		
+		/*Check whether pixel is within ROI, mark with bone threshold*/
+		for (int j = 0;j< height;j++){
+			for (int i = 0; i < width;i++){
+				if (!periRoi.contains(i,j) | endoRoi.contains(i,j)){
+					tempScaledImage[i+j*width] = minimum;
 				}
 			}
 		}
+		/*Check whether a polygon can be acquired and include polygon points too*/
+		Polygon polygon = periRoi.getPolygon();
+		if (polygon != null){
+			for (int j = 0;j< polygon.npoints;j++){
+				tempScaledImage[polygon.xpoints[j]+polygon.ypoints[j]*width] = scaledImage[polygon.xpoints[j]+polygon.ypoints[j]*width];
+			}
+		}
+		polygon = endoRoi.getPolygon();
+		if (polygon != null){
+			for (int j = 0;j< polygon.npoints;j++){
+				tempScaledImage[polygon.xpoints[j]+polygon.ypoints[j]*width] = scaledImage[polygon.xpoints[j]+polygon.ypoints[j]*width];
+			}
+		}
+		
 		try{
-			Vector<Object> boneMasks = getSieve(tempScaledImage,boneThreshold,details.roiChoice,details.guessStacked,details.stacked,details.guessFlip,details.allowCleaving);
+			Vector<Object> boneMasks = getSieve(tempScaledImage,0d,"Bigger",false,false,false,false);
 			sieve							= (byte[]) boneMasks.get(0);
 			result	 						= (byte[]) boneMasks.get(1);
 			Vector<DetectedEdge> boneEdges	= (Vector<DetectedEdge>) boneMasks.get(2);
@@ -96,15 +97,15 @@ public class SelectROI extends RoiSelector{
 			
 			for (int j = 0;j< height;j++){
 				for (int i = 0; i < width;i++){
-					if (scaledImage[i+j*width]<areaThreshold && sieve[i+j*width] > 0){
+					if (tempScaledImage[i+j*width]<0d && sieve[i+j*width] > 0){
 						boneMarrowRoiI.add(i);
 						boneMarrowRoiJ.add(j);
 					}
-					if (scaledImage[i+j*width]>=areaThreshold && sieve[i+j*width] > 0){
+					if (tempScaledImage[i+j*width]>=0d && sieve[i+j*width] > 0){
 						cortexAreaRoiI.add(i);
 						cortexAreaRoiJ.add(j);
 					}
-					if (scaledImage[i+j*width]>=BMDthreshold && sieve[i+j*width] > 0){
+					if (tempScaledImage[i+j*width]>=0d && sieve[i+j*width] > 0){
 						cortexROI[i+j*width] = scaledImage[i+j*width];				
 						cortexRoiI.add(i);
 						cortexRoiJ.add(j);
@@ -117,5 +118,5 @@ public class SelectROI extends RoiSelector{
 		}catch (ExecutionException err){
 			throw err;
 		}
-	}
+	}	
 }

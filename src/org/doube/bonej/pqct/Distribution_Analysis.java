@@ -136,8 +136,8 @@ public class Distribution_Analysis implements PlugIn {
 		}
 		//Get parameters for scaling the image and for thresholding
 		GenericDialog dialog = new GenericDialog("Analysis parameters");
-		String[] topLabels = new String[4];
-		boolean[] defaultTopValues = new boolean[4];
+		String[] topLabels = new String[6];
+		boolean[] defaultTopValues = new boolean[6];
 		topLabels[0] = "Flip_horizontal";
 		defaultTopValues[0] = false;
 		topLabels[1] = "Flip_vertical";
@@ -146,7 +146,11 @@ public class Distribution_Analysis implements PlugIn {
 		defaultTopValues[2] = false;
 		topLabels[3] = "Measurement_tube";
 		defaultTopValues[3] = false;
-		dialog.addCheckboxGroup(1, 4, topLabels, defaultTopValues);
+		topLabels[4] = "Use_Lasso";		//Added 2017/02/03, select 'lassoing' muscles to include intermuscular fat into muscle area
+		defaultTopValues[4] = false;
+		topLabels[5] = "Use_Thresholdless";	//Added 2017/02/03, use thresholdless analysis for density distribution analysis
+		defaultTopValues[5] = false;
+		dialog.addCheckboxGroup(1, 6, topLabels, defaultTopValues);
 
 		dialog.addNumericField("Air_threshold", -40, 4, 8, null);	//Anything above this is fat or more dense
 		dialog.addNumericField("Fat threshold", 40, 4, 8, null);		//Anything between this and air threshold is fat
@@ -302,19 +306,29 @@ public class Distribution_Analysis implements PlugIn {
 																							filterSizes);
 			scaledImageData = new ScaledImageData(signedShort, imp.getWidth(), imp.getHeight(),resolution, imageAndAnalysisDetails.scalingFactor, imageAndAnalysisDetails.constant,3,imageAndAnalysisDetails.flipHorizontal,imageAndAnalysisDetails.flipVertical,imageAndAnalysisDetails.noFiltering);	//Scale and 3x3 median filter the data
 			RoiSelector roi = null;
+			RoiSelector roiRoi = null; 	//Added 2017/02/03, use for thresholdless analysis
 			RoiSelector softRoi = null;
 			
 			try{
 				if(imageAndAnalysisDetails.cOn || imageAndAnalysisDetails.mOn || imageAndAnalysisDetails.conOn || imageAndAnalysisDetails.dOn){
+					if (imageAndAnalysisDetails.thresholdless){
+						//Calculate a thresholdless roi
+						roiRoi = new ThresholdlessROI(scaledImageData, imageAndAnalysisDetails,imp,imageAndAnalysisDetails.boneThreshold,true);
+					}
+					
 					roi = new SelectROI(scaledImageData, imageAndAnalysisDetails,imp,imageAndAnalysisDetails.boneThreshold,true);
+					
 				}
 				
 				if(imageAndAnalysisDetails.stOn){
 					if (removeROIs ==1){
 						imp.setRoi(null,false);	//Remove unwanted ROIS
 					}
-
-					softRoi = new SelectSoftROI(scaledImageData, imageAndAnalysisDetails,imp,imageAndAnalysisDetails.boneThreshold,true);
+					if (imageAndAnalysisDetails.lasso){
+						softRoi = new SelectSoftROILasso(scaledImageData, imageAndAnalysisDetails,imp,imageAndAnalysisDetails.boneThreshold,true);
+					}else{
+						softRoi = new SelectSoftROI(scaledImageData, imageAndAnalysisDetails,imp,imageAndAnalysisDetails.boneThreshold,true);
+					}
 					if (roi == null){
 						roi = softRoi;
 					}
@@ -388,7 +402,13 @@ public class Distribution_Analysis implements PlugIn {
 				//IJ.log("conON.");
 				if (imageAndAnalysisDetails.conOn){
 					//IJ.log("Adding concentric");
-					ConcentricRingAnalysis concentricRingAnalysis =new ConcentricRingAnalysis((SelectROI) roi,imageAndAnalysisDetails,determineAlfa);
+					ConcentricRingAnalysis concentricRingAnalysis;
+					if (imageAndAnalysisDetails.thresholdless){
+						concentricRingAnalysis =new ConcentricRingAnalysis((SelectROI) roiRoi,imageAndAnalysisDetails,determineAlfa);
+					}else{
+						concentricRingAnalysis =new ConcentricRingAnalysis((SelectROI) roi,imageAndAnalysisDetails,determineAlfa);
+					}
+					
 					results = resultsWriter.printConcentricRingResults(results,concentricRingAnalysis,imageAndAnalysisDetails);
 					if(!imageAndAnalysisDetails.dOn && makeImage && resultImage != null){
 						resultImage = ResultsImage.addPeriRadii(resultImage,concentricRingAnalysis.boneCenter, determineAlfa.pindColor,concentricRingAnalysis.Ru,concentricRingAnalysis.Theta);
@@ -400,11 +420,20 @@ public class Distribution_Analysis implements PlugIn {
 				//IJ.log("dON.");
 				if (imageAndAnalysisDetails.dOn){
 					//IJ.log("Adding distribution");
-					DistributionAnalysis DistributionAnalysis = new DistributionAnalysis((SelectROI) roi,imageAndAnalysisDetails,determineAlfa);
-					results = resultsWriter.printDistributionResults(results,DistributionAnalysis,imageAndAnalysisDetails);
+					double tempThresh = imageAndAnalysisDetails.BMDthreshold;
+					DistributionAnalysis distributionAnalysis;
+					if (imageAndAnalysisDetails.thresholdless){
+						imageAndAnalysisDetails.BMDthreshold = 0d; //Lower the threshold to include all bone within cortex area
+						distributionAnalysis = new DistributionAnalysis((SelectROI) roiRoi,imageAndAnalysisDetails,determineAlfa);
+						imageAndAnalysisDetails.BMDthreshold = tempThresh; //Return the BMD threshold to its original value
+					}else{
+						distributionAnalysis = new DistributionAnalysis((SelectROI) roi,imageAndAnalysisDetails,determineAlfa);
+					}
+					
+					results = resultsWriter.printDistributionResults(results,distributionAnalysis,imageAndAnalysisDetails);
 					if (makeImage && resultImage != null){
-						resultImage = ResultsImage.addRadii(resultImage,determineAlfa.alfa/Math.PI*180.0,DistributionAnalysis.marrowCenter, determineAlfa.pindColor,DistributionAnalysis.R,DistributionAnalysis.R2,DistributionAnalysis.Theta);
-						resultImage = ResultsImage.addMarrowCenter(resultImage,determineAlfa.alfa/Math.PI*180.0,DistributionAnalysis.marrowCenter);
+						resultImage = ResultsImage.addRadii(resultImage,determineAlfa.alfa/Math.PI*180.0,distributionAnalysis.marrowCenter, determineAlfa.pindColor,distributionAnalysis.R,distributionAnalysis.R2,distributionAnalysis.Theta);
+						resultImage = ResultsImage.addMarrowCenter(resultImage,determineAlfa.alfa/Math.PI*180.0,distributionAnalysis.marrowCenter);
 						//System.out.println("dON image "+resultImage.getWidth()+" height "+resultImage.getHeight());
 					}
 				}
