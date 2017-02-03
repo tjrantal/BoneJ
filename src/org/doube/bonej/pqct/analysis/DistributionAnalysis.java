@@ -228,6 +228,7 @@ public class DistributionAnalysis{
 		R2= new double[360];
 		Rs= new double[360];
 		Ru= new double[360];
+		double rTemp;
 		BMDj = new Vector<double[]>();
 		for (int i = 0;i<divisions;++i){
 			BMDj.add(new double[360]);
@@ -247,19 +248,24 @@ public class DistributionAnalysis{
 			}
 			R2[et] = R[et];
 			Rs[et] = R[et];
-			//Anatomical periosteal border
-			while (originalROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)] > 0
-					|| originalROI[(int) (marrowCenter[0]+(R[et]+0.5)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+0.5)*Math.sin(Theta[et])))*width)] > 0
-					|| originalROI[(int) (marrowCenter[0]+(R[et]+1)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+1)*Math.sin(Theta[et])))*width)] > 0
-					|| originalROI[(int) (marrowCenter[0]+(R[et]+2)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+2)*Math.sin(Theta[et])))*width)] > 0
-					|| originalROI[(int) (marrowCenter[0]+(R[et]+3)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+3)*Math.sin(Theta[et])))*width)] > 0
-					|| originalROI[(int) (marrowCenter[0]+(R[et]+4)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+4)*Math.sin(Theta[et])))*width)] > 0
-					|| originalROI[(int) (marrowCenter[0]+(R[et]+6)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+6)*Math.sin(Theta[et])))*width)] > 0){
+			
+			//Return from rMax
+			rTemp = maxRadiusY;
+			while (	rTemp > R2[et] &&
+					originalROI[(int) (marrowCenter[0]+rTemp*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+rTemp*Math.sin(Theta[et])))*width)] <= 0
+			){
+				rTemp -= 0.1;				
+			}
+			
+			//Increment r until peeled periosteal border
+			while (R[et]<rTemp){
 				R[et] = R[et] + 0.1;
 //				increments++;
 				if (originalROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)] > 0){
-					BMD_temp.add(originalROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)]);}
+					BMD_temp.add(originalROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)]);
+				}
 			}
+
 			Ru[et] = R[et];
 			int analysisThickness = BMD_temp.size();
 			//Dividing the cortex to three divisions -> save the mean vBMD for each division
