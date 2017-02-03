@@ -287,6 +287,7 @@ public class DistributionAnalysis{
 		R2= new double[360];
 		Rs= new double[360];
 		Ru= new double[360];
+		double rTemp;
 		BMDj = new Vector<double[]>();
 		for (int i = 0;i<divisions;++i){
 			BMDj.add(new double[360]);
@@ -312,19 +313,25 @@ public class DistributionAnalysis{
 			}
 			R2[et] = R[et]; 
 			R[et] = R[et]+0.1;
-			//Peeled periosteal border
-			while (peeledROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)] > 0
-					|| peeledROI[(int) (marrowCenter[0]+(R[et]+0.5)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+0.5)*Math.sin(Theta[et])))*width)] > 0
-					|| peeledROI[(int) (marrowCenter[0]+(R[et]+1)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+1)*Math.sin(Theta[et])))*width)] > 0
-					|| peeledROI[(int) (marrowCenter[0]+(R[et]+2)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+2)*Math.sin(Theta[et])))*width)] > 0
-					|| peeledROI[(int) (marrowCenter[0]+(R[et]+3)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+3)*Math.sin(Theta[et])))*width)] > 0
-					|| peeledROI[(int) (marrowCenter[0]+(R[et]+4)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+4)*Math.sin(Theta[et])))*width)] > 0
-					|| peeledROI[(int) (marrowCenter[0]+(R[et]+6)*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+(R[et]+6)*Math.sin(Theta[et])))*width)] > 0){
+			//Return from rMax
+			rTemp = maxRadiusY;
+			while (	rTemp > R2[et] &&
+					peeledROI[(int) (marrowCenter[0]+rTemp*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+rTemp*Math.sin(Theta[et])))*width)] <= 0
+			){
+				rTemp -= 0.1;				
+			}
+			
+			//Increment r until peeled periosteal border
+			while (R[et]<rTemp){
 				R[et] = R[et] + 0.1;
 //				increments++;
 				if (peeledROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)] > 0){
-					BMD_temp.add(originalROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)]);}
+					BMD_temp.add(originalROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)]);
+				}
 			}
+			
+			
+			
 			//Anatomical periosteal border
 			Ru[et] = R[et];
 			while (originalROI[(int) (marrowCenter[0]+Ru[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+Ru[et]*Math.sin(Theta[et])))*width)] > threshold

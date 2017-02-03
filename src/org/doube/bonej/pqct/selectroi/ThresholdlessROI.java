@@ -29,6 +29,7 @@ import ij.text.*; 	//Debugging ...
 import ij.process.*;	//Debugging
 import ij.plugin.frame.RoiManager;
 import java.util.concurrent.ExecutionException;
+import org.doube.bonej.pqct.utils.VisualiseSieve;
 
 @SuppressWarnings(value ={"serial","unchecked"}) //Unchecked for obtaining Vector<Object> as a returnvalue
 
@@ -114,6 +115,7 @@ public class ThresholdlessROI extends SelectROI{
 					}
 				}
 			}
+			//VisualiseSieve.showImage(cortexROI,width,height);
 			edges = boneEdges;
 		}catch (ExecutionException err){
 			throw err;
