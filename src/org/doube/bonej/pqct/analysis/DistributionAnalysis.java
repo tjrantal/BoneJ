@@ -239,7 +239,7 @@ public class DistributionAnalysis{
 			Theta[et]=Math.PI/180.0*et;
 			BMD_temp.clear();
 			if (et > 0){
-				R[et] = R[et-1]/2d;
+				R[et] = Rs[et-1]/2d;
 			}
 			//Anatomical endosteal border
 			while (originalROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)] < threshold 
@@ -304,7 +304,7 @@ public class DistributionAnalysis{
 			Theta[et]=Math.PI/180.0*et;
 			BMD_temp.clear();
 			if (et > 0){
-				R[et] = R[et-1]/2d;
+				R[et] = Rs[et-1]/2d;
 			}
 			//Anatomical endosteal border
 			while (originalROI[(int) (marrowCenter[0]+R[et]*Math.cos(Theta[et]))+ ((int) ((marrowCenter[1]+R[et]*Math.sin(Theta[et])))*width)] < threshold 
